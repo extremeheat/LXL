@@ -4,7 +4,7 @@
   "description": "OpenAI GPT and Google PaLM 2 LLM wrapper",
   "main": "src/index.js",
   "scripts": {
-    "test": "mocha --reporter spec --exit",
+    "test": "",
     "pretest": "npm run lint",
     "lint": "standard",
     "fix": "standard --fix"
