@@ -16,7 +16,7 @@ function streamingTest () {
 
 if (!module.parent) {
   const systemPrompt = 'Answer questions from the user like a pirate.'
-  const session = new ChatSession(systemPrompt, apiKey)
+  const session = new ChatSession(systemPrompt, { apiKey, maxTokens: 200 })
   session.sendMessage('Hello! Why is the sky blue?', (chunk) => {
     console.log('Chunk', chunk)
   }).then((result) => {

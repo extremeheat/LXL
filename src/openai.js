@@ -1,8 +1,6 @@
 const https = require('https')
-// const apiKey = fs.readFileSync('./openai.key', 'utf8').trim()
 
 function getStreamingCompletion (apiKey, payload, completionCb) {
-  console.log('Sending to', payload.model, payload.messages, 'with', apiKey)
   const chunkPrefixLen = 'data: '.length
   const options = {
     hostname: 'api.openai.com',
@@ -61,9 +59,10 @@ function getStreamingCompletion (apiKey, payload, completionCb) {
 }
 
 class ChatSession {
-  constructor (systemMessage, apiKey, model = 'gpt-3.5-turbo') {
+  constructor (systemMessage, { apiKey, model = 'gpt-3.5-turbo', maxTokens = 100 }) {
     this.model = model
     this.apiKey = apiKey
+    this.maxTokens = maxTokens
     // fix systemMessage \r\n to \n
     systemMessage = systemMessage.replace(/\r\n/g, '\n')
     this.messages = [
@@ -78,11 +77,11 @@ class ChatSession {
   async sendMessage (message, chunkCb) {
     const content = 'User: ' + message
     this.messages.push({ role: 'user', content })
-    console.log('Sending to', this.model, this.messages)
+    // console.log('Sending to', this.model, this.messages)
     let completeMessage = ''
-    const completion = await getStreamingCompletion(this.apiKey, {
+    await getStreamingCompletion(this.apiKey, {
       model: this.model,
-      max_tokens: 100,
+      max_tokens: this.maxTokens,
       messages: this.messages,
       stream: !!chunkCb
     }, (chunk) => {
@@ -96,9 +95,7 @@ class ChatSession {
       }
       // console.log('Chunk', JSON.stringify(chunk))
     })
-    console.log('Got response from', this.model, completion)
     this.messages.push({ role: 'assistant', content: completeMessage })
-    console.log('Response from', this.model, completeMessage)
     return completeMessage
   }
 }
