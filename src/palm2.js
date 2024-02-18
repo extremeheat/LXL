@@ -1,5 +1,5 @@
-async function requestCompletion (prompt, apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta3/models/text-bison-001:generateText?key=${apiKey}`
+async function requestCompletion (prompt, apiKey, model = 'text-bison-001') {
+  const url = `https://generativelanguage.googleapis.com/v1beta3/models/${model}:generateText?key=${apiKey}`
   const payload = { prompt: { text: prompt } }
   const data = await fetch(url, {
     method: 'POST',

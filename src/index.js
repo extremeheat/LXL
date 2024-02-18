@@ -1,7 +1,14 @@
 const openai = require('./openai')
-const google = require('./palm2')
+const palm2 = require('./palm2')
+const gemini = require('./gemini')
+const { appDataDir, CompletionService } = require('./CompletionService')
+const ChatSession = require('./ChatSession')
 
 module.exports = {
-  ...openai,
-  ...google
+  appDataDir,
+  CompletionService,
+  ChatSession,
+  openai,
+  palm2,
+  gemini
 }

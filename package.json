@@ -22,7 +22,11 @@
   "homepage": "https://github.com/extremeheat/LXL#readme",
   "devDependencies": {
     "langxlang": "file:.",
-    "standard": "^17.0.0",
-    "mocha": "^10.0.0"
+    "mocha": "^10.0.0",
+    "standard": "^17.0.0"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.2.1",
+    "openai": "^4.28.0"
   }
 }

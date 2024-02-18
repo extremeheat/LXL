@@ -7,18 +7,38 @@ LangXLang (LXL), a simple wrapper for Node.js and OpenAI's GPT and Google PaLM 2
 
 Work in progress, not ready for use.
 
+## Installation
+```sh
+npm install langxlang
+```
+
+## Usage
+
+See tests/ for examples.
+
+
 ## API
 
-### async requestPalmCompletion(prompt, key) -- (Google PaLM 2)
+### `CompletionService`
 
-Returns a string of the completion of the prompt.
+#### `constructor(apiKeys: { openai: string, gemini: string })`
 
-### new ChatSession (sysPrompt, key, model) -- (OpenAI)
+Creates an instance of completion service.
+Note: as an alternative to explicitly passing the API keys in the constructor you can: 
+* set the `OPENAI_API_KEY` and `GEMINI_API_KEY` environment variables.
+* or, define the keys inside `/.local/share/lxl-cache.json` (linux), `~/Library/Application Support/lxl-cache.json` (mac), or `%appdata%\lxl-cache.json` (windows).
 
-Creates a new chat session, for managed back and forth convos.
+#### async `requestCompletion(model: string, systemPrompt: string, userPrompt: string)`
 
-#### .sendMessage(message, cb) -- (OpenAI)
+Request a non-streaming completion from the model.
 
-Send a message to the chat session. Supports streaming, so you 
-can listen to response chunks via the `cb` callback. 
-The promise result of `.sendMessage` is the full response.
+### `ChatSession`
+
+### `constructor(completionService: CompletionService, model: string, systemPrompt: string)`
+
+ChatSession is for back and forth conversation between a user an an LLM.
+
+#### async sendMessage (message: string, chunkCallback: ({ content: string }) => void)
+
+Send a message to the LLM and receive a response as return value. The chunkCallback
+can be defined to listen to bits of the message stream as it's being written by the LLM.

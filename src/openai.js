@@ -1,5 +1,43 @@
+const OpenAI = require('openai')
 const https = require('https')
 
+async function generateCompletion (model, system, user, options = {}) {
+  const openai = new OpenAI(options)
+  const completion = await openai.chat.completions.create({
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ],
+    model
+  })
+  const choice = completion.choices[0]
+  console.log(completion.choices[0])
+  return choice
+}
+
+// With OpenAI's Node.js SDK
+async function streamingChatCompletion (model, messages, options, chunkCb) {
+  const openai = new OpenAI(options)
+  const completion = openai.chat.completions.create({
+    model,
+    messages,
+    stream: true,
+    ...options
+  })
+  let buffer = ''
+  for await (const chunk of completion) {
+    const choice = chunk.choices[0]
+    if (choice.delta?.content) {
+      buffer += choice.delta.content
+      chunkCb(choice.delta)
+    } else if (choice.message?.content) {
+      buffer += choice.message.content
+    }
+  }
+  return buffer
+}
+
+// Over REST
 function getStreamingCompletion (apiKey, payload, completionCb) {
   const chunkPrefixLen = 'data: '.length
   const options = {
@@ -58,46 +96,4 @@ function getStreamingCompletion (apiKey, payload, completionCb) {
   })
 }
 
-class ChatSession {
-  constructor (systemMessage, { apiKey, model = 'gpt-3.5-turbo', maxTokens = 100 }) {
-    this.model = model
-    this.apiKey = apiKey
-    this.maxTokens = maxTokens
-    // fix systemMessage \r\n to \n
-    systemMessage = systemMessage.replace(/\r\n/g, '\n')
-    this.messages = [
-      { role: 'system', content: systemMessage }
-    ]
-  }
-
-  setSystemMessage (systemMessage) {
-    this.messages[0].content = systemMessage
-  }
-
-  async sendMessage (message, chunkCb) {
-    const content = 'User: ' + message
-    this.messages.push({ role: 'user', content })
-    // console.log('Sending to', this.model, this.messages)
-    let completeMessage = ''
-    await getStreamingCompletion(this.apiKey, {
-      model: this.model,
-      max_tokens: this.maxTokens,
-      messages: this.messages,
-      stream: !!chunkCb
-    }, (chunk) => {
-      if (!chunk) return
-      const choice = chunk.choices[0]
-      if (choice.delta?.content) {
-        completeMessage += choice.delta.content
-        chunkCb(choice.delta)
-      } else if (choice.message?.content) {
-        completeMessage += choice.message.content
-      }
-      // console.log('Chunk', JSON.stringify(chunk))
-    })
-    this.messages.push({ role: 'assistant', content: completeMessage })
-    return completeMessage
-  }
-}
-
-module.exports = { getStreamingCompletion, ChatSession }
+module.exports = { generateCompletion, getStreamingCompletion, streamingChatCompletion }
