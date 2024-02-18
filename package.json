@@ -1,8 +1,9 @@
 {
   "name": "langxlang",
   "version": "0.1.0",
-  "description": "OpenAI GPT and Google PaLM 2 LLM wrapper",
+  "description": "LLM wrapper for OpenAI GPT and Google Gemini and PaLM 2 models",
   "main": "src/index.js",
+  "types": "src/index.d.ts",
   "scripts": {
     "test": "",
     "pretest": "npm run lint",
@@ -13,7 +14,7 @@
     "type": "git",
     "url": "git+https://github.com/extremeheat/LXL.git"
   },
-  "keywords": [],
+  "keywords": ["gpt", "openai", "gemini", "palm", "chat", "ai", "ml"],
   "author": "extremeheat",
   "license": "MIT",
   "bugs": {
