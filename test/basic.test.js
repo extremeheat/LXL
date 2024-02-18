@@ -2,6 +2,6 @@
 
 describe('basic', () => {
   it('test', () => {
-    console.log('it works~')
+    console.log('please manually run test in api.js')
   })
 })
