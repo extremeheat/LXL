@@ -14,9 +14,20 @@ declare module 'langxlang' {
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string): Promise<{ text: string }>
   }
 
+  interface Func {
+    Arg(options: { type: object, description: string, example?: string, default?: any, required?: boolean }): object
+    Arg<T>(options: { type: T, description: string, example?: string, default?: any, required?: boolean }): T
+  }
+
+  type FuncArg = ReturnType<typeof Arg>
+  interface Functions {
+    // The functions that can be used in the user prompt.
+    [key: string]: (...args: FuncArg) => any
+  }
+
   class ChatSession {
     // ChatSession is for back and forth conversation between a user an an LLM.
-    constructor(completionService: CompletionService, model: Model, systemPrompt: string)
+    constructor(completionService: CompletionService, model: Model, systemPrompt: string, options?: { functions?: Functions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
     sendMessage(message: Model, chunkCallback: ({ content: string }) => void): Promise<string>

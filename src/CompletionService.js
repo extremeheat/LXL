@@ -49,7 +49,6 @@ class CompletionService {
       // Gemini
       case 'gemini-1.0-pro': {
         if (!this.geminiApiKey) throw new Error('Gemini API key not set')
-        console.log('Requesting completion', model, system, user)
         const result = await gemini.generateCompletion(model, this.geminiApiKey, system, user)
         return { text: result.text() }
       }
@@ -67,7 +66,7 @@ class CompletionService {
     }
   }
 
-  async requestStreamingChat (model, { messages, maxTokens }, chunkCb) {
+  async requestStreamingChat (model, { messages, maxTokens, functions }, chunkCb) {
     switch (model) {
       // OpenAI
       case 'gpt-3.5-turbo-16k':
@@ -76,22 +75,48 @@ class CompletionService {
       case 'gpt-4-turbo-preview': {
         if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
         let completeMessage = ''
+        let finishReason
+        const fnCalls = {}
         await openai.getStreamingCompletion(this.openaiApiKey, {
           model,
           max_tokens: maxTokens,
           messages,
-          stream: true
+          stream: true,
+          tools: functions || undefined,
+          tool_choice: functions ? 'auto' : undefined
         }, (chunk) => {
           if (!chunk) return
           const choice = chunk.choices[0]
-          if (choice.delta?.content) {
-            completeMessage += choice.delta.content
-            chunkCb?.(choice.delta)
-          } else if (choice.message?.content) {
-            completeMessage += choice.message.content
+          if (choice.finish_reason) {
+            finishReason = choice.finish_reason
           }
+          if (choice.message) {
+            completeMessage += choice.message.content
+          } else if (choice.delta) {
+            const delta = choice.delta
+            if (delta.tool_calls) {
+              for (const call of delta.tool_calls) {
+                fnCalls[call.index] ??= {
+                  id: call.id,
+                  name: '',
+                  args: ''
+                }
+                const entry = fnCalls[call.index]
+                if (call.function.name) {
+                  entry.name = call.function.name
+                }
+                if (call.function.arguments) {
+                  entry.args += call.function.arguments
+                }
+              }
+            } else if (delta.content) {
+              completeMessage += delta.content
+              chunkCb?.(choice.delta)
+            }
+          } else throw new Error('Unknown chunk type')
         })
-        return completeMessage
+        const type = finishReason === 'tool_calls' ? 'function' : 'text'
+        return { type, completeMessage, fnCalls }
       }
       default:
         throw new Error('Model not supported for streaming chat: ' + model)
