@@ -11,21 +11,24 @@ const appDataDir = process.env.APPDATA ||
 function loadLXLKeyCache () {
   if (!appDataDir) return
   const lxlFile = 'lxl-cache.json'
-  if (!fs.existsSync(join(appDataDir, lxlFile))) {
-    fs.writeFileSync(join(appDataDir, lxlFile), '{"keys": {}}')
+  const lxlPath = join(appDataDir, lxlFile)
+  if (!fs.existsSync(lxlPath)) {
+    fs.writeFileSync(lxlPath, '{"keys": {}}')
+    // console.log(`Created LXL key cache in '${lxlPath}'. You can define API keys here with the structure:  {"keys": { openai: '...', gemini: '...', palm2: '...' }}`)
   }
-  const lxl = JSON.parse(fs.readFileSync(join(appDataDir, lxlFile)))
-  return lxl
+  const lxl = JSON.parse(fs.readFileSync(lxlPath))
+  return { ...lxl, path: lxlPath }
 }
 
 const supportedModels = ['text-bison-001', 'text-bison-002', 'gemini-1.0-pro', 'gpt-3.5-turbo-16k', 'gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo-preview']
 
 class CompletionService {
-  constructor (keys = {}, options = {}) {
+  constructor (keys, options = {}) {
     if (!keys) {
-      keys = loadLXLKeyCache().keys
+      const cache = loadLXLKeyCache()
+      keys = cache.keys
+      this.cachePath = cache.path
     }
-    console.log('Keys', keys)
     this.options = options
     this.palm2ApiKey = keys.palm2 || process.env.PALM2_API_KEY
     this.geminiApiKey = keys.gemini || process.env.GEMINI_API_KEY
