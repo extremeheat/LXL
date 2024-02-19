@@ -25,6 +25,7 @@ const { ChatSession, CompletionService } = require('langxlang')
 ```js
 const service = new CompletionService({ openai: [key], gemini: [key] })
 const response = await service.requestCompletion('gpt-3.5-turbo-16k', /* empty system prompt */, 'Tell me about yourself')
+console.log(response.text)
 ```
 
 #### Chatting with a model

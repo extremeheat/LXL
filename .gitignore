@@ -131,3 +131,5 @@ dist
 playground
 package-lock.json
 *.key
+
+test/*.html
