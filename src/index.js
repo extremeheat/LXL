@@ -10,5 +10,6 @@ module.exports = {
   ChatSession,
   openai,
   palm2,
-  gemini
+  gemini,
+  tools: require('./tools')
 }
