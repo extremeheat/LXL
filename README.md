@@ -9,8 +9,6 @@ Supported models are:
 * OpenAI: `gpt-3.5-turbo-16k`, `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo-preview`
 * Google: `gemini-1.0-pro` (Gemini), or `text-bison-001`, `text-bison-002`, `palm-2` (PaLM 2)
 
-Work in progress, not ready for use.
-
 ## Installation
 ```sh
 npm install langxlang
@@ -18,8 +16,33 @@ npm install langxlang
 
 ## Usage
 
-See tests/ for examples.
+```js
+const { ChatSession, CompletionService } = require('langxlang')
+```
 
+#### Requesting a basic completion from a model
+
+```js
+const service = new CompletionService({ openai: [key], gemini: [key] })
+const response = await service.requestCompletion('gpt-3.5-turbo-16k', /* empty system prompt */, 'Tell me about yourself')
+```
+
+#### Chatting with a model
+
+Start a conversation and listen to the response in chunks, streamed to the terminal:
+
+```js
+const { ChatSession } = require('langxlang')
+const session = new ChatSession(service, 'gpt-3.5-turbo-16k', 'Hello', 'How are you?')
+const q = 'Why is the sky blue?'
+console.log('User:', q)
+await session.sendMessage(q, ({ content }) => { process.stdout.write(content) })
+const q2 = 'What about on the poles?'
+console.log('User:', q2)
+await session.sendMessage(q2, ({ content }) => { process.stdout.write(content) })
+```
+
+See a running example in `examples/streaming.js`.
 
 ## API
 
@@ -30,7 +53,8 @@ See tests/ for examples.
 Creates an instance of completion service.
 Note: as an alternative to explicitly passing the API keys in the constructor you can: 
 * set the `OPENAI_API_KEY` and `GEMINI_API_KEY` environment variables.
-* or, define the keys inside `/.local/share/lxl-cache.json` (linux), `~/Library/Application Support/lxl-cache.json` (mac), or `%appdata%\lxl-cache.json` (windows).
+* or, define the keys inside `/.local/share/lxl-cache.json` (linux), `~/Library/Application Support/lxl-cache.json` (mac), or `%appdata%\lxl-cache.json` (windows) with the structure
+`{"keys": {"openai": "your-openai-key", "gemini": "your-gemini-key"}}`
 
 #### async requestCompletion(model: string, systemPrompt: string, userPrompt: string)
 
