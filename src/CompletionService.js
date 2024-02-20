@@ -49,7 +49,6 @@ class CompletionService {
       // Gemini
       case 'gemini-1.0-pro': {
         if (!this.geminiApiKey) throw new Error('Gemini API key not set')
-        console.log('Requesting completion', model, system, user)
         const result = await gemini.generateCompletion(model, this.geminiApiKey, system, user)
         return { text: result.text() }
       }
@@ -67,7 +66,7 @@ class CompletionService {
     }
   }
 
-  async requestStreamingChat (model, { messages, maxTokens }, chunkCb) {
+  async requestStreamingChat (model, { messages, maxTokens, functions }, chunkCb) {
     switch (model) {
       // OpenAI
       case 'gpt-3.5-turbo-16k':
@@ -76,22 +75,85 @@ class CompletionService {
       case 'gpt-4-turbo-preview': {
         if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
         let completeMessage = ''
+        let finishReason
+        const fnCalls = {}
         await openai.getStreamingCompletion(this.openaiApiKey, {
           model,
           max_tokens: maxTokens,
           messages,
-          stream: true
+          stream: true,
+          tools: functions || undefined,
+          tool_choice: functions ? 'auto' : undefined
         }, (chunk) => {
           if (!chunk) return
           const choice = chunk.choices[0]
-          if (choice.delta?.content) {
-            completeMessage += choice.delta.content
-            chunkCb?.(choice.delta)
-          } else if (choice.message?.content) {
-            completeMessage += choice.message.content
+          if (choice.finish_reason) {
+            finishReason = choice.finish_reason
           }
+          if (choice.message) {
+            completeMessage += choice.message.content
+          } else if (choice.delta) {
+            const delta = choice.delta
+            if (delta.tool_calls) {
+              for (const call of delta.tool_calls) {
+                fnCalls[call.index] ??= {
+                  id: call.id,
+                  name: '',
+                  args: ''
+                }
+                const entry = fnCalls[call.index]
+                if (call.function.name) {
+                  entry.name = call.function.name
+                }
+                if (call.function.arguments) {
+                  entry.args += call.function.arguments
+                }
+              }
+            } else if (delta.content) {
+              completeMessage += delta.content
+              chunkCb?.(choice.delta)
+            }
+          } else throw new Error('Unknown chunk type')
         })
-        return completeMessage
+        const type = finishReason === 'tool_calls' ? 'function' : 'text'
+        return { type, completeMessage, fnCalls }
+      }
+      // Gemini
+      case 'gemini-1.0-pro': {
+        if (!this.geminiApiKey) throw new Error('Gemini API key not set')
+        const geminiMessages = messages.map((msg) => {
+          const m = structuredClone(msg)
+          if (msg.role === 'assistant') m.role = 'model'
+          if (msg.role === 'system') m.role = 'user'
+          if (msg.content) {
+            delete m.content
+            m.parts = [{ text: msg.content }]
+          }
+          return m
+        })
+        const response = await gemini.requestChatCompletion(model, geminiMessages, {
+          apiKey: this.geminiApiKey,
+          functions
+        })
+        if (response.text) {
+          const answer = response.text
+          // Currently Gemini doesn't support streaming, so we just return the complete message
+          chunkCb?.({ content: answer })
+          const result = { type: 'text', completeMessage: answer }
+          return result
+        } else if (response.functionCall) {
+          const fnCalls = {
+            0: {
+              id: response.functionCall.name,
+              name: response.functionCall.name,
+              args: JSON.stringify(response.functionCall.args)
+            }
+          }
+          const result = { type: 'function', fnCalls }
+          return result
+        } else {
+          throw new Error('Unknown response from Gemini')
+        }
       }
       default:
         throw new Error('Model not supported for streaming chat: ' + model)

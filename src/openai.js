@@ -1,5 +1,6 @@
 const OpenAI = require('openai')
 const https = require('https')
+const debug = require('debug')('lxl')
 
 async function generateCompletion (model, system, user, options = {}) {
   const openai = new OpenAI(options)
@@ -53,7 +54,8 @@ function getStreamingCompletion (apiKey, payload, completionCb) {
       Authorization: 'Bearer ' + apiKey
     }
   }
-  return new Promise((resolve) => {
+  debug('OpenAI /completions Payload', JSON.stringify(payload))
+  return new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
       if (res.statusCode !== 200) {
         console.error(`Server returned status code ${res.statusCode}`, res.statusMessage, res.headers)
@@ -89,7 +91,7 @@ function getStreamingCompletion (apiKey, payload, completionCb) {
     })
 
     req.on('error', (error) => {
-      console.error('Request error:', error)
+      reject(error)
     })
     req.write(JSON.stringify(payload))
     req.end()
