@@ -56,10 +56,6 @@ async function requestChatCompletion (model, messages, options, chunkCb) {
   }
 }
 
-// requestChatCompletion('gemini-1.0-pro', [
-//   { role: 'user', parts: [{ text: 'Hello how are you doing?' }] },
-// ], { apiKey: '' })
-
 module.exports = { generateCompletion, requestChatCompletion }
 
 /*

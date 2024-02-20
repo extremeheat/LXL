@@ -156,7 +156,6 @@ async function convertFunctionsToOpenAI (functions) {
   const oaiFns = []
   for (const name in fnsData) {
     const fnData = fnsData[name]
-    // console.log('fnData', fnData)
     const oaiFn = {
       name,
       description: fnData.description
@@ -168,10 +167,11 @@ async function convertFunctionsToOpenAI (functions) {
         required: []
       }
       for (const arg of fnData.args) {
+        if (!arg.description) throw new Error(`Argument '${arg.name}' must have a description`)
         if (arg.required && arg.default) {
           throw new Error(`Argument '${arg.name}' cannot be both required and have a default value`)
         }
-        if (arg.default) {
+        if (arg.default || arg.default === null) {
           arg.required = false
         } else {
           arg.required = true
@@ -185,7 +185,6 @@ async function convertFunctionsToOpenAI (functions) {
     oaiFns.push(oaiFn)
   }
   const result = oaiFns.map((e) => ({ type: 'function', function: e }))
-  // console.dir(result, { depth: null })
   return { result, metadata: fnsData }
 }
 

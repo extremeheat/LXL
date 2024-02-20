@@ -44,6 +44,11 @@ await session.sendMessage(q2, ({ content }) => { process.stdout.write(content) }
 ```
 
 #### Using functions
+
+This is an example to provide a `getTime()` method to the LLM, which can be called from the user's input. The model would call the needed function, get the output, then use that to build the response to the user's message.
+
+Note: Each of the functions must have a call to Desc() at the top, to provide a description of the function to the model. If parameters are used, they must be defined with Arg() to provide details to the model, see the example [here](./examples/functions.js) and the TypeScript types [here](./src/index.d.ts) for more details.
+
 ```js
 const { Func: { Arg, Desc } } = require('langxlang')
 const session = new ChatSession(service, 'gpt-3.5-turbo-16k', /* empty system prompt */ '', {

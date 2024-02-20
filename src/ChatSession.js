@@ -43,7 +43,6 @@ class ChatSession {
       // https://openai.com/blog/function-calling-and-other-api-updates
       this.messages.push({ role: 'assistant', function_call: { name: functionName, arguments: JSON.stringify(payload) } })
 
-      // const fnData = this.functionsPayload.find(e => e.function.name === functionName)
       const fnMeta = this.functionsMeta[functionName]
 
       if (this.functionsPayload.length === 0) {
@@ -62,8 +61,8 @@ class ChatSession {
         // Set default values if they're not provided
         for (let i = 0; i < fnMeta.args.length; i++) {
           const meta = fnMeta.args[i]
-          if (!args[i]) {
-            if (meta.default) {
+          if (args[i] === undefined) {
+            if (meta.default !== undefined) {
               args[i] = meta.default
             }
           }
@@ -74,28 +73,32 @@ class ChatSession {
     } else if (this.modelAuthor === 'gemini') {
       /*
 {
-    "role": "function",
-    "parts": [{
+  "role": "function",
+  "parts": [
+    {
       "functionResponse": {
         "name": "find_theaters",
         "response": {
           "name": "find_theaters",
           "content": {
             "movie": "Barbie",
-            "theaters": [{
-              "name": "AMC Mountain View 16",
-              "address": "2000 W El Camino Real, Mountain View, CA 94040"
-            }, {
-              "name": "Regal Edwards 14",
-              "address": "245 Castro St, Mountain View, CA 94040"
-            }]
+            "theaters": [
+              {
+                "name": "AMC Mountain View 16",
+                "address": "2000 W El Camino Real, Mountain View, CA 94040"
+              },
+              {
+                "name": "Regal Edwards 14",
+                "address": "245 Castro St, Mountain View, CA 94040"
+              }
+            ]
           }
         }
       }
-    }]
-  }
-  */
-      // const fnData = this.functionsPayload.find(e => e.name === functionName)
+    }
+  ]
+}
+*/
       const fnMeta = this.functionsMeta[functionName]
       this.messages.push({ role: 'model', parts: [{ functionCall: { name: functionName, args: payload } }] })
 
