@@ -118,6 +118,43 @@ class CompletionService {
         const type = finishReason === 'tool_calls' ? 'function' : 'text'
         return { type, completeMessage, fnCalls }
       }
+      // Gemini
+      case 'gemini-1.0-pro': {
+        if (!this.geminiApiKey) throw new Error('Gemini API key not set')
+        const geminiMessages = messages.map((msg) => {
+          const m = structuredClone(msg)
+          if (msg.role === 'assistant') m.role = 'model'
+          if (msg.role === 'system') m.role = 'user'
+          if (msg.content) {
+            delete m.content
+            m.parts = [{ text: msg.content }]
+          }
+          return m
+        })
+        const response = await gemini.requestChatCompletion(model, geminiMessages, {
+          apiKey: this.geminiApiKey,
+          functions
+        })
+        if (response.text) {
+          const answer = response.text
+          // Currently Gemini doesn't support streaming, so we just return the complete message
+          chunkCb?.({ content: answer })
+          const result = { type: 'text', completeMessage: answer }
+          return result
+        } else if (response.functionCall) {
+          const fnCalls = {
+            0: {
+              id: response.functionCall.name,
+              name: response.functionCall.name,
+              args: JSON.stringify(response.functionCall.args)
+            }
+          }
+          const result = { type: 'function', fnCalls }
+          return result
+        } else {
+          throw new Error('Unknown response from Gemini')
+        }
+      }
       default:
         throw new Error('Model not supported for streaming chat: ' + model)
     }

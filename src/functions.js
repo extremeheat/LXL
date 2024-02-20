@@ -125,6 +125,8 @@ function convertArgToOpenAI (arg) {
     const updated = structuredClone(arg)
     delete updated.lxl
     delete updated.required
+    delete updated.default
+    delete updated.name
     return updated
   }
   oai.description = arg.description
@@ -187,4 +189,12 @@ async function convertFunctionsToOpenAI (functions) {
   return { result, metadata: fnsData }
 }
 
-module.exports = { Arg, Desc, processFunctions, convertArgToOpenAI, convertFunctionsToOpenAI }
+async function convertFunctionsToGemini (functions) {
+  const openai = await convertFunctionsToOpenAI(functions)
+  const result = openai.result.map((e) => {
+    return e.function
+  })
+  return { result, metadata: openai.metadata }
+}
+
+module.exports = { Arg, Desc, processFunctions, convertArgToOpenAI, convertFunctionsToOpenAI, convertFunctionsToGemini }

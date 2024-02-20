@@ -1,5 +1,5 @@
 const { cleanMessage } = require('./util')
-const { convertFunctionsToOpenAI } = require('./functions')
+const { convertFunctionsToOpenAI, convertFunctionsToGemini } = require('./functions')
 const { getModelInfo } = require('./util')
 const debug = require('debug')('lxl')
 
@@ -29,10 +29,12 @@ class ChatSession {
       this.functionsPayload = result
       this.functionsMeta = metadata
     } else if (modelInfo.author === 'gemini') {
-      throw new Error('Function calling with Gemini not supported yet')
+      const { result, metadata } = await convertFunctionsToGemini(functions)
+      this.functionsPayload = result
+      this.functionsMeta = metadata
     }
-    debug('Loaded OpenAI function payload: ' + JSON.stringify(this.functionsPayload))
-    debug('Loaded OpenAI function metadata: ' + JSON.stringify(this.functionsMeta))
+    debug('Loaded function payload: ' + JSON.stringify(this.functionsPayload))
+    debug('Loaded function metadata: ' + JSON.stringify(this.functionsMeta))
   }
 
   // This calls a function and adds the reponse to the context so the model can be called again
@@ -44,15 +46,10 @@ class ChatSession {
       // const fnData = this.functionsPayload.find(e => e.function.name === functionName)
       const fnMeta = this.functionsMeta[functionName]
 
-      // if there's 1 function, we can just call it directly
       if (this.functionsPayload.length === 0) {
         const fn = this.functions[functionName]
         const result = await fn()
         this.messages.push({ role: 'function', name: functionName, content: result })
-      } else if (this.functionsPayload.length === 1) {
-        const fn = this.functions[functionName]
-        const result = await fn({ value: payload })
-        this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
       } else {
         const fn = this.functions[functionName]
         // payload is an object of { argName: argValue } ... since order is not guaranteed we need to handle it here
@@ -73,6 +70,60 @@ class ChatSession {
         }
         const result = await fn.apply(null, args.map(e => e))
         this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
+      }
+    } else if (this.modelAuthor === 'gemini') {
+      /*
+{
+    "role": "function",
+    "parts": [{
+      "functionResponse": {
+        "name": "find_theaters",
+        "response": {
+          "name": "find_theaters",
+          "content": {
+            "movie": "Barbie",
+            "theaters": [{
+              "name": "AMC Mountain View 16",
+              "address": "2000 W El Camino Real, Mountain View, CA 94040"
+            }, {
+              "name": "Regal Edwards 14",
+              "address": "245 Castro St, Mountain View, CA 94040"
+            }]
+          }
+        }
+      }
+    }]
+  }
+  */
+      // const fnData = this.functionsPayload.find(e => e.name === functionName)
+      const fnMeta = this.functionsMeta[functionName]
+      this.messages.push({ role: 'model', parts: [{ functionCall: { name: functionName, args: payload } }] })
+
+      // if there's 1 function, we can just call it directly
+      if (this.functionsPayload.length === 0) {
+        const fn = this.functions[functionName]
+        const result = await fn()
+        this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: { name: functionName, content: result } } }] })
+      } else {
+        const fn = this.functions[functionName]
+        // payload is an object of { argName: argValue } ... since order is not guaranteed we need to handle it here
+        const args = []
+        for (const param in payload) {
+          const value = payload[param]
+          const index = fnMeta.argNames.indexOf(param)
+          args[index] = value
+        }
+        // Set default values if they're not provided
+        for (let i = 0; i < fnMeta.args.length; i++) {
+          const meta = fnMeta.args[i]
+          if (!args[i]) {
+            if (meta.default) {
+              args[i] = meta.default
+            }
+          }
+        }
+        const result = await fn.apply(null, args.map(e => e))
+        this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: { name: functionName, content: result } } }] })
       }
     }
   }

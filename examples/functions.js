@@ -6,6 +6,9 @@ const { CompletionService, ChatSession, Func: { Arg, Desc } } = require('../src'
 const service = new CompletionService()
 console.log('Using cache in', service.cachePath)
 
+const model = 'gpt-3.5-turbo-16k'
+// const model = 'gemini-1.0-pro'
+
 function getTimeUTC () {
   Desc('This method returns the current time in UTC')
   console.log('Getting time with', arguments.length, 'arguments')
@@ -19,7 +22,7 @@ function getSum (numbers = Arg({ type: 'array', items: { type: 'number' }, descr
 }
 
 async function main () {
-  const session = new ChatSession(service, 'gpt-3.5-turbo-16k', '', {
+  const session = new ChatSession(service, model, '', {
     functions: { getTimeUTC, getSum }
   })
   const q = 'What time is it right now?'

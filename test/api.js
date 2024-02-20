@@ -44,6 +44,17 @@ async function testSession () {
   console.log('Done', followup.length, 'bytes')
 }
 
+function getWeather (
+  location = Arg({ type: String, description: 'Specify the location' }),
+  unit = Arg({ type: ['C', 'F'], description: 'Specify the unit', default: 'C' })
+) {
+  Desc('This method returns the weather in the specified location')
+  console.log('Getting weather with', arguments)
+  if (unit === 'C') return { weather: 'sunny', temp: '25C' }
+  else if (unit === 'F') return { weather: 'sunny', temp: '77F' }
+  return '0'
+}
+
 async function testOpenAISessionWithFuncs () {
   async function getTime (timezone = Arg({ type: String, description: 'Specify the timezone' })) {
     Desc('This method returns the current time in the specified timezone')
@@ -52,21 +63,29 @@ async function testOpenAISessionWithFuncs () {
   }
 
   const session = new ChatSession(completionService, 'gpt-3.5-turbo', '', {
-    functions: {
-      getTime,
-      getWeather (
-        location = Arg({ type: String, description: 'Specify the location', example: 'San Francisco' }),
-        unit = Arg({ type: ['C', 'F'], description: 'Specify the unit', default: 'C' })
-      ) {
-        Desc('This method returns the weather in the specified location')
-        console.log('Getting weather with', arguments)
-        if (unit === 'C') return { weather: 'sunny', temp: '25C' }
-        else if (unit === 'F') return { weather: 'sunny', temp: '77F' }
-        return '32'
-      }
-    }
+    functions: { getTime, getWeather }
   })
-  await session.sendMessage("Hey, what's the weather in San Francisco?", toTerminal)
+  await session.sendMessage("Hey, what's the weather in Beijing?", toTerminal)
+  console.log('\nDone')
+}
+
+async function testGeminiSessionWithFuncs () {
+  async function getTimeUTC () {
+    Desc('This method returns the current time in UTC')
+    console.log('Getting time with', arguments.length, 'arguments')
+    return new Date().toUTCString()
+  }
+
+  const session = new ChatSession(completionService, 'gemini-1.0-pro', '', {
+    functions: { getTimeUTC, getWeather }
+  })
+  const q = 'What time is it right now?'
+  console.log('User:', q)
+  await session.sendMessage(q, toTerminal)
+  const q2 = "Hey, what's the weather in Tokyo?"
+  console.log('\nUser:', q2)
+  await session.sendMessage(q2, toTerminal)
+  console.log('\nDone')
 }
 
 async function testBasic () {
@@ -74,6 +93,8 @@ async function testBasic () {
   await testGeminiCompletion()
   await testSession()
   await testOpenAISessionWithFuncs()
+  await testGeminiSessionWithFuncs()
+
   console.log('All Good!')
 }
 
