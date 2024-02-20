@@ -14,7 +14,15 @@
     "type": "git",
     "url": "git+https://github.com/extremeheat/LXL.git"
   },
-  "keywords": ["gpt", "openai", "gemini", "palm", "chat", "ai", "ml"],
+  "keywords": [
+    "gpt",
+    "openai",
+    "gemini",
+    "palm",
+    "chat",
+    "ai",
+    "ml"
+  ],
   "author": "extremeheat",
   "license": "MIT",
   "bugs": {
@@ -28,6 +36,8 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
+    "acorn": "^8.11.3",
+    "debug": "^4.3.4",
     "openai": "^4.28.0"
   }
 }

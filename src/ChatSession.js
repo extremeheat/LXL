@@ -32,7 +32,7 @@ class ChatSession {
       throw new Error('Function calling with Gemini not supported yet')
     }
     debug('Loaded OpenAI function payload: ' + JSON.stringify(this.functionsPayload))
-    // console.dir(this.functionsPayload, { depth: null })
+    debug('Loaded OpenAI function metadata: ' + JSON.stringify(this.functionsMeta))
   }
 
   // This calls a function and adds the reponse to the context so the model can be called again
@@ -41,6 +41,7 @@ class ChatSession {
       // https://openai.com/blog/function-calling-and-other-api-updates
       this.messages.push({ role: 'assistant', function_call: { name: functionName, arguments: JSON.stringify(payload) } })
 
+      // const fnData = this.functionsPayload.find(e => e.function.name === functionName)
       const fnMeta = this.functionsMeta[functionName]
 
       // if there's 1 function, we can just call it directly
@@ -54,14 +55,23 @@ class ChatSession {
         this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
       } else {
         const fn = this.functions[functionName]
-        // payload is an object of { argName: argValue } ... since order is not guaranteed we need to handle it
+        // payload is an object of { argName: argValue } ... since order is not guaranteed we need to handle it here
         const args = []
         for (const param in payload) {
           const value = payload[param]
           const index = fnMeta.argNames.indexOf(param)
           args[index] = value
         }
-        const result = await fn.apply(null, args.map(e => ({ value: e })))
+        // Set default values if they're not provided
+        for (let i = 0; i < fnMeta.args.length; i++) {
+          const meta = fnMeta.args[i]
+          if (!args[i]) {
+            if (meta.default) {
+              args[i] = meta.default
+            }
+          }
+        }
+        const result = await fn.apply(null, args.map(e => e))
         this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
       }
     }

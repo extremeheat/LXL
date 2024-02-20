@@ -34,13 +34,27 @@ Start a conversation and listen to the response in chunks, streamed to the termi
 
 ```js
 const { ChatSession } = require('langxlang')
-const session = new ChatSession(service, 'gpt-3.5-turbo-16k', 'Hello', 'How are you?')
+const session = new ChatSession(service, 'gpt-3.5-turbo-16k', /* empty system prompt */ '')
 const q = 'Why is the sky blue?'
 console.log('User:', q)
 await session.sendMessage(q, ({ content }) => { process.stdout.write(content) })
 const q2 = 'What about on the poles?'
 console.log('User:', q2)
 await session.sendMessage(q2, ({ content }) => { process.stdout.write(content) })
+```
+
+#### Using functions
+```js
+const { Func: { Arg, Desc } } = require('langxlang')
+const session = new ChatSession(service, 'gpt-3.5-turbo-16k', /* empty system prompt */ '', {
+  functions: {
+    getTime () {
+      Desc('Get the current time')
+      return new Date().toLocaleTimeString()
+    }
+  }
+})
+session.sendMessage('What time is it?').then(console.log)
 ```
 
 See a running example in `examples/streaming.js`.

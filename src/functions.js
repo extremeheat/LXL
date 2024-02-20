@@ -127,21 +127,6 @@ function convertArgToOpenAI (arg) {
     delete updated.required
     return updated
   }
-  // else if (typeof arg.type === 'object') {
-  //   if (arg.lxl) {
-  //     // recursive
-  //     oai.type = 'object'
-  //     oai.properties = {}
-  //     for (const prop in arg.type) {
-  //       oai.properties[prop] = convertArgToOpenAI(arg.type[prop])
-  //     }
-  //   } else {
-  //     // assume normal JSON schema, allow user to handle it
-  //     oai.type = arg.type
-  //   }
-  // } else {
-  //   throw new Error('Unknown type')
-  // }
   oai.description = arg.description
   return oai
 }
