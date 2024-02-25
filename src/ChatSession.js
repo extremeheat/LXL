@@ -23,12 +23,12 @@ class ChatSession {
 
   async _loadFunctions (functions) {
     const modelInfo = getModelInfo(this.model)
-    this.modelAuthor = modelInfo.author
-    if (modelInfo.author === 'openai') {
+    this.modelFamily = modelInfo.family
+    if (modelInfo.family === 'openai') {
       const { result, metadata } = await convertFunctionsToOpenAI(functions)
       this.functionsPayload = result
       this.functionsMeta = metadata
-    } else if (modelInfo.author === 'gemini') {
+    } else if (modelInfo.family === 'gemini') {
       const { result, metadata } = await convertFunctionsToGemini(functions)
       this.functionsPayload = result
       this.functionsMeta = metadata
@@ -39,7 +39,7 @@ class ChatSession {
 
   // This calls a function and adds the reponse to the context so the model can be called again
   async _callFunction (functionName, payload, metadata) {
-    if (this.modelAuthor === 'openai') {
+    if (this.modelFamily === 'openai') {
       // https://openai.com/blog/function-calling-and-other-api-updates
       this.messages.push({ role: 'assistant', function_call: { name: functionName, arguments: JSON.stringify(payload) } })
 
@@ -70,7 +70,7 @@ class ChatSession {
         const result = await fn.apply(null, args.map(e => e))
         this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
       }
-    } else if (this.modelAuthor === 'gemini') {
+    } else if (this.modelFamily === 'gemini') {
       /*
 {
   "role": "function",

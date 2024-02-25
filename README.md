@@ -6,7 +6,7 @@
 LangXLang (LXL), a Node.js library to use OpenAI's GPT models and Google's Gemini and PaLM 2 models, with function calling support.
 
 Supported models are:
-* OpenAI: `gpt-3.5-turbo-16k`, `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo-preview`
+* OpenAI: `gpt-3.5-turbo-16k`, `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo-preview` (or any specific gpt- model listed [here](https://platform.openai.com/docs/models/))
 * Google: `gemini-1.0-pro` (Gemini), or `text-bison-001`, `text-bison-002`, `palm-2` (PaLM 2)
 
 ## Installation

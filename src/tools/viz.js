@@ -1,4 +1,5 @@
 const { CompletionService } = require('../CompletionService')
+const { getModelInfo } = require('../util')
 
 function makeVizHtml (data) {
   return `
@@ -77,31 +78,9 @@ async function makeVizForPrompt (system, user, models) {
   const data = { models: [], outputs: {} }
   for (const model of models) {
     const { text } = await service.requestCompletion(model, system, user)
-    switch (model) {
-      case 'gpt-3.5-turbo-16k':
-        data.models.push(['GPT-3.5 Turbo 16k', '3516turbo'])
-        data.outputs['3516turbo'] = text
-        break
-      case 'gpt-3.5-turbo':
-        data.models.push(['GPT-3.5 Turbo', '35turbo'])
-        data.outputs['35turbo'] = text
-        break
-      case 'gpt-4':
-        data.models.push(['GPT-4', 'gpt4'])
-        data.outputs.gpt4 = text
-        break
-      case 'gpt-4-turbo-preview':
-        data.models.push(['GPT-4 Turbo Preview', 'gpt4turbo'])
-        data.outputs.gpt4turbo = text
-        break
-      case 'gemini-1.0-pro':
-        data.models.push(['Gemini 1.0 Pro', 'gemini'])
-        data.outputs.gemini = text
-        break
-      default:
-        data.models.push([model, model])
-        data.outputs[model] = text
-    }
+    const modelInfo = getModelInfo(model)
+    data.models.push([modelInfo.displayName, modelInfo.safeId])
+    data.outputs[modelInfo.safeId] = text
   }
   data.system = system
   data.user = user
