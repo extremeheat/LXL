@@ -22,7 +22,7 @@ function getAllFilesIn (folder) {
 
 // This function will clone a github repo, review all the files and merge relevant files into a single file
 function collectGithubRepoFiles (repo, options) {
-  const extension = options.extension || '.js'
+  const extension = options.extension
   const branch = options.branch || 'master'
   // First, try to clone the repo inside a "repos" folder in this directory
   const safeName = repo.replace(/\//g, ',')
@@ -43,7 +43,7 @@ function collectGithubRepoFiles (repo, options) {
   // Now figure out the relevant files
   const relevantFiles = []
   for (const [file, relFile] of allFiles) {
-    if (!file.endsWith(extension)) {
+    if (extension && !file.endsWith(extension)) {
       continue
     }
     if (options.matching) {
