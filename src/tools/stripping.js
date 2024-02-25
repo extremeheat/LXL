@@ -1,6 +1,7 @@
 // Stripping here refers to removing unnecessary tokens, comments and white-space in a program to minimize the amount of tokens
 // that are needed to represent the program. In languages like Java, there's lots of syntax tokens that are needed for the program
 // to run, but not needed for the purpose of abstractly understanding program logic. Think things like public/private, final, etc.
+
 function stripJava (code, options) {
   // First, we need to "tokenize" the code, by splitting it into 3 types of data: comments, strings, and code.
   const tokens = []
@@ -53,10 +54,8 @@ function stripJava (code, options) {
       }
     }
   }
-  tokens.push([tokenSoFar, currentTokenType])
   // Now we have an array of tokens, where every other token is a comment or string, and the others are code.
-  console.log(tokens)
-
+  tokens.push([tokenSoFar, currentTokenType])
   // Now we can remove the keyword tokens that we don't want to keep. The always have spaces around them, so nothing fancy is needed.
   const syntaxTokensToRemove = options.tokensToRemove ||
     ['protected', 'private', 'public', 'final', 'abstract', 'synchronized', 'volatile', 'transient', 'native', 'strictfp']
@@ -201,8 +200,6 @@ function stripPHP (code, options = {}) {
     }
   }
   tokens.push([tokenSoFar, currentTokenType])
-  console.log(tokens)
-
   // Now we can remove the keyword tokens that are not important for abstractly understanding the program
   const syntaxTokensToRemove = options.tokensToRemove || ['public', 'private', 'protected', 'final', 'readonly']
   for (const entry of tokens) {
@@ -328,11 +325,8 @@ function stripGo (code, options) {
       }
     }
   }
-  tokens.push([tokenSoFar, currentTokenType])
-  console.log(tokens)
-
   // Go doesn't have a lot of syntax tokens that can be removed, so we'll just remove comments and whitespace
-
+  tokens.push([tokenSoFar, currentTokenType])
   // Now we can replace some user specified tokens with other tokens. Useful for renaming variables
   if (options.replacements) {
     for (const entry of tokens) {
