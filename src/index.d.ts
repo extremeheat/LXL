@@ -15,6 +15,7 @@ declare module 'langxlang' {
   }
 
   interface Func {
+    // If default is not provided, the argument is required.
     Arg(options: { type: string[], description: string, example?: string, default?: any, required?: boolean }): string
     Arg(options: { type: object, description: string, example?: string, default?: any, required?: boolean }): object
     Arg<T>(options: { type: T, description: string, example?: string, default?: any, required?: boolean }): T
@@ -38,6 +39,16 @@ declare module 'langxlang' {
   interface Tools {
     // Generate HTML that shows side-by-side outputs for the system/user prompt across different models.
     makeVizForPrompt(systemPrompt: string, userPrompt: string, models: Model[]): Promise<string>
+    // Returns a JS object with a list of files in a GitHub repo
+    collectGithubRepoFiles(repo: string, options: {
+      // What extension of files in the repo to include
+      extension?: string,
+      // The branch to use
+      branch?: string,
+      // Either a function that returns true if the file should be included
+      // or an array of regexes of which one needs to match for inclusion
+      matching?: (fileName: string) => boolean | RegExp[]
+    }): Promise<[absolutePath: string, relativePath: string, contents: string][]>
   }
 
   const tools: Tools

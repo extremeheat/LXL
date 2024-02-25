@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/extremeheat/LXL/actions/workflows/ci.yml/badge.svg)](https://github.com/extremeheat/LXL/actions/workflows/)
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/extremeheat/LXL)
 
-LangXLang (LXL), a simple wrapper for Node.js to use OpenAI's GPT models and Google's Gemini and PaLM 2 models, with function calling support.
+LangXLang (LXL), a Node.js library to use OpenAI's GPT models and Google's Gemini and PaLM 2 models, with function calling support.
 
 Supported models are:
 * OpenAI: `gpt-3.5-turbo-16k`, `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo-preview`

@@ -40,8 +40,6 @@ function collectGithubRepoFiles (repo, options) {
   const allFiles = getAllFilesIn(repoPath)
     .map(f => [f, f.replace(fixSeparator(repoPath), '')])
 
-  console.log(allFiles)
-
   // Now figure out the relevant files
   const relevantFiles = []
   for (const [file, relFile] of allFiles) {
@@ -59,7 +57,6 @@ function collectGithubRepoFiles (repo, options) {
     }
     relevantFiles.push([file, relFile])
   }
-  // console.log('Relevant', relevantFiles)
   const fileContents = relevantFiles.map(([abs, rel]) => [abs, rel, fs.readFileSync(abs, 'utf8').trim()])
   return fileContents
 }
