@@ -13,6 +13,14 @@ declare module 'langxlang' {
     // Request a non-streaming completion from the model.
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string): Promise<{ text: string }>
   }
+  class GoogleAIStudioCompletionService extends CompletionService {
+    // Creates an instance of GoogleAIStudioCompletionService. The port is the port that the server should listen on.
+    constructor(port: number)
+    // Promise that resolves when the server is ready to accept requests.
+    ready: Promise<void>
+    // Stop the server.
+    stop(): void
+  }
 
   interface Func {
     // If default is not provided, the argument is required.
