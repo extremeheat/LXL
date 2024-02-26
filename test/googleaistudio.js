@@ -1,4 +1,5 @@
 /* eslint-disable no-console, no-unused-vars */
+const ChatSession = require('../src/ChatSession')
 const GoogleAIStudioCompletionService = require('../src/GoogleAIStudioCompletionService')
 
 function pleasantWriter () {
@@ -27,7 +28,7 @@ function normalWriter (chunk) {
   process.stdout.write(chunk.delta)
 }
 
-async function main () {
+async function testCompletion () {
   const service = new GoogleAIStudioCompletionService(8095)
   await service.ready
 
@@ -43,6 +44,35 @@ async function main () {
   process.stdout.write('\n')
   console.log('Result 2', result2.text)
 
+  service.stop()
+}
+
+async function testCompletionChat () {
+  const service = new GoogleAIStudioCompletionService(8095)
+  await service.ready
+
+  const result = await service.requestStreamingChat('gemini-1.5-pro', [
+    { role: 'user', content: 'How are you doing today?' }
+  ])
+  console.log('Result', result.text)
+  service.stop()
+}
+
+async function testChatSession () {
+  const service = new GoogleAIStudioCompletionService(8095)
+  await service.ready
+  const session = new ChatSession(service, 'gemini-1.5-pro', '')
+  const q = 'Hello! Why is the sky blue?'
+  console.log('> ', q)
+  const message = await session.sendMessage(q, pleasantWriter())
+  process.stdout.write('\n')
+  console.log('Done', message.length, 'bytes', 'now asking a followup')
+  // ask related question about the response
+  const q2 = 'Is this the case everywhere on Earth, what about the poles?'
+  console.log('> ', q2)
+  const followup = await session.sendMessage(q2, pleasantWriter())
+  process.stdout.write('\n')
+  console.log('Done', followup.text.length, 'bytes')
   service.stop()
 }
 
@@ -68,6 +98,11 @@ async function repl () {
   }).on('close', () => {
     process.exit(0)
   })
+}
+
+async function main () {
+  await testCompletion()
+  await testChatSession()
 }
 
 // repl()

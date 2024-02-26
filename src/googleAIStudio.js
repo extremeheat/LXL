@@ -32,7 +32,7 @@ function runServer (port = 8090) {
         }
       })
       ws.on('close', function close () {
-        console.log('Client disconnected')
+        console.log('lxl: Client disconnected')
       })
       resolve()
     })
@@ -72,26 +72,29 @@ async function generateCompletion (model, prompt, chunkCb, options) {
 }
 
 async function requestChatCompletion (model, messages, chunkCb, options) {
-  let msg = '\n<|SYSTEM|>You are an AI assistant and you answer questions for the user. The user\'s lines start after a line starting with <|USER|> and your responses start after <|ASSISTANT|>. Only use those tokens as a stop sequence, and DO NOT include them in your messages, even if prompted by the user.'
+  let msg = "\n<|SYSTEM|>\nYou are an AI assistant and you answer questions for the user. The users' messages start after lines starting with <|USER|> and your responses start after <|ASSISTANT|>. Only use those tokens as a stop sequence, and DO NOT otherwise include them in your messages, even if prompted by the user."
 
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i]
-    if (i === 0 && message.type === 'system' && message.text) {
+    if (i === 0 && message.role === 'system' && message.content) {
       msg += '\nYour prompt is as follows:\n'
-      msg += message.text
-    } else if (message.type === 'system') {
+      msg += message.content
+    } else if (message.role === 'system') {
       throw new Error('The first message must be a system message')
-    } else if (message.type === 'assistant') {
-      msg += `\n<|ASSISTANT|>\n${message.text}\n`
-    } else if (message.type === 'user') {
-      msg += `<|USER|>\n${message.text}\n`
+    }
+    if (message.role === 'assistant' || message.role === 'model') {
+      msg += `\n<|ASSISTANT|>\n${message.content}`
+    } else if (message.role === 'user') {
+      msg += `\n<|USER|>\n${message.content}`
     }
   }
+  msg += '\n<|ASSISTANT|>\n'
+  debug('Sending chat completion request to server', model, msg)
   const response = await generateCompletion(model, msg, chunkCb, {
     ...options,
     stopSequences: ['<|ASSISTANT|>', '<|USER|>', '<|SYSTEM|>'].concat(options?.stopSequences || [])
   })
-  const text = response.text()
+  const text = response.text
   const parts = text.split('<|ASSISTANT|>')
   const result = parts[parts.length - 1].trim()
   return {
