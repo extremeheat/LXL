@@ -1,19 +1,21 @@
 const WebSocket = require('ws')
+const debug = require('debug')('lxl')
 const { once, EventEmitter } = require('events')
 // Create a websocket server that client can connect to
 let serverConnection
 let serverPromise
+let wss
 
 function runServer (port = 8090) {
   if (serverPromise) return serverPromise
   serverConnection = new EventEmitter()
   serverPromise = new Promise((resolve) => {
-    const wss = new WebSocket.Server({ port })
-    console.log('Google AI Studio LXL server is running on port', port, ', waiting for client...')
+    wss = new WebSocket.Server({ port })
+    console.log('LXL: Google AI Studio LXL server is running on port', port, ', waiting for client...')
     // When a client connects, send a message
     wss.on('connection', function connection (ws) {
       ws.sendJSON = (data) => ws.send(JSON.stringify(data))
-      console.log('Got a connection from Google AI Studio client!')
+      console.log('LXL: Got a connection from Google AI Studio client!')
       // Send a welcome message
       ws.sendJSON({ type: 'success', message: 'Connected to server' })
       serverConnection.on('completionRequest', (request) => {
@@ -21,7 +23,7 @@ function runServer (port = 8090) {
       })
       // Listen for messages from the client and log them
       ws.on('message', function incoming (message) {
-        // console.log('received: %s', message)
+        debug('received: %s', message)
         const data = JSON.parse(message)
         if (data.type === 'completionResponse') {
           serverConnection.emit('completionResponse', data.response)
@@ -36,6 +38,16 @@ function runServer (port = 8090) {
     })
   })
   return serverPromise
+}
+
+function stopServer () {
+  // Close all client connections
+  for (const client of wss.clients) {
+    client.close()
+  }
+  wss.close()
+  serverConnection = null
+  serverPromise = null
 }
 
 async function generateCompletion (model, prompt, chunkCb, options) {
@@ -87,4 +99,4 @@ async function requestChatCompletion (model, messages, chunkCb, options) {
   }
 }
 
-module.exports = { runServer, generateCompletion }
+module.exports = { stopServer, runServer, generateCompletion, requestChatCompletion }
