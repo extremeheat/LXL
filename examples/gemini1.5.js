@@ -1,11 +1,12 @@
+/* eslint-disable no-unused-vars */
 // Gemini 1.5 Pro is *not* currently publicly available.
 // This is a demo that will only work if you have access to 1.5 Pro in the Google AI Studio playground *and*
 // a special user script (like an extension) that you can run to allow langxlang to use the browser as an API.
 
 const { GoogleAIStudioCompletionService, ChatSession } = require('langxlang')
-// This is an example to use Gemini 1.5 Pro, via the Google AI Studio playground
+
 async function testCompletion () {
-  // Use port 8095 to host a websocket server
+  // Use port 8095 to host the websocket server
   const service = new GoogleAIStudioCompletionService(8095)
   await service.ready
   const response = await service.requestCompletion('gemini-1.5-pro', '', 'Why is the sky blue?')
