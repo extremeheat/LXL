@@ -46,7 +46,7 @@ declare module 'langxlang' {
 
   interface Tools {
     // Generate HTML that shows side-by-side outputs for the system/user prompt across different models.
-    makeVizForPrompt(systemPrompt: string, userPrompt: string, models: Model[]): Promise<string>
+    makeVizForPrompt(systemPrompt: string, userPrompt: string, models: Model[], options?: { title?: string, description?: string, aiStudioPort?: number }): Promise<string>
     // Returns a JS object with a list of files in a GitHub repo
     collectGithubRepoFiles(repo: string, options: {
       // What extension of files in the repo to include

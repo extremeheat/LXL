@@ -10,7 +10,7 @@ let serverConnection
 let serverPromise
 let wss
 
-function runServer (port = 8090) {
+function runServer (port = 8095) {
   if (serverPromise) return serverPromise
   serverConnection = new EventEmitter()
   serverPromise = new Promise((resolve) => {
