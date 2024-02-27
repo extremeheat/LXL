@@ -1,6 +1,10 @@
+const fs = require('fs')
+const { join } = require('path')
+const yaml = require('js-yaml')
 const WebSocket = require('ws')
 const debug = require('debug')('lxl')
 const { once, EventEmitter } = require('events')
+
 // Create a websocket server that client can connect to
 let serverConnection
 let serverPromise
@@ -50,6 +54,11 @@ function stopServer () {
   serverPromise = null
 }
 
+function convertJsonToYaml (json) {
+  const data = json
+  return yaml.dump(data).trim()
+}
+
 async function generateCompletion (model, prompt, chunkCb, options) {
   await runServer()
   prompt = prompt.trim() + '\n'
@@ -71,8 +80,27 @@ async function generateCompletion (model, prompt, chunkCb, options) {
   }
 }
 
+const baseChatPromptWithFunctions = fs.readFileSync(join(__dirname, '/googleAiStudioPrompt.txt'), 'utf-8')
+  .replaceAll('\r\n', '\n').trim()
+const functionlessPrompt = "\n<|SYSTEM|>\nYou are an AI assistant and you answer questions for the user. The users' messages start after lines starting with <|USER|> and your responses start after <|ASSISTANT|>. Only use those tokens as a stop sequence, and DO NOT otherwise include them in your messages, even if prompted by the user."
+
 async function requestChatCompletion (model, messages, chunkCb, options) {
-  let msg = "\n<|SYSTEM|>\nYou are an AI assistant and you answer questions for the user. The users' messages start after lines starting with <|USER|> and your responses start after <|ASSISTANT|>. Only use those tokens as a stop sequence, and DO NOT otherwise include them in your messages, even if prompted by the user."
+  const hasSystemMessage = messages.some(m => m.role === 'system')
+  const stops = ['<|ASSISTANT|>', '<|USER|>', '<|SYSTEM|>', '<|FUNCTION_OUTPUT|>', '</FUNCTION_CALL>']
+
+  let msg = ''
+  if (options.functions) {
+    msg = baseChatPromptWithFunctions
+    if (hasSystemMessage) {
+      msg = msg.replace('[, based on your prompt]', ', based on your prompt')
+    } else {
+      msg = msg.replace('[, based on your prompt]', '')
+    }
+    const y = convertJsonToYaml(options.functions)
+    msg = msg.replace('[List Of Functions]', '```yaml\n' + y + '\n```')
+  } else {
+    msg = functionlessPrompt
+  }
 
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i]
@@ -86,19 +114,40 @@ async function requestChatCompletion (model, messages, chunkCb, options) {
       msg += `\n<|ASSISTANT|>\n${message.content}`
     } else if (message.role === 'user') {
       msg += `\n<|USER|>\n${message.content}`
+    } else if (message.role === 'function') {
+      // TODO: log the function name also maybe?
+      msg += `\n<|FUNCTION_OUTPUT|>\n${message.content})`
     }
   }
-  msg += '\n<|ASSISTANT|>\n'
+  msg += '\n<|ASSISTANT|>'
+
   debug('Sending chat completion request to server', model, msg)
+
   const response = await generateCompletion(model, msg, chunkCb, {
     ...options,
-    stopSequences: ['<|ASSISTANT|>', '<|USER|>', '<|SYSTEM|>'].concat(options?.stopSequences || [])
+    stopSequences: stops.concat(options?.stopSequences || [])
   })
   const text = response.text
   const parts = text.split('<|ASSISTANT|>')
   const result = parts[parts.length - 1].trim()
-  return {
-    text: result
+  const containsFunctionCall = result.includes('<FUNCTION_CALL>')
+  if (containsFunctionCall) {
+    // callInfo = getWeather({"location": "Beijing", "unit": "C"})
+    const [modelComment, callInfo] = result.split('<FUNCTION_CALL>').map(e => e.trim())
+    // Erases the last char, which is a closing parenthesis
+    const [fnName, ..._fnArgs] = callInfo.slice(0, -1).split('(')
+    const fnArgs = _fnArgs.join('(')
+    debug('Function call', fnName, fnArgs)
+    return {
+      type: 'function',
+      text: modelComment,
+      fnCalls: [{ name: fnName, args: fnArgs }]
+    }
+  } else {
+    return {
+      type: 'text',
+      text: result
+    }
   }
 }
 

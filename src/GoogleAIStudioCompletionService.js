@@ -25,7 +25,7 @@ class GoogleAIStudioCompletionService {
       throw new Error(`Model ${model} is not supported`)
     }
     const result = await studio.requestChatCompletion(model, messages, chunkCb, { maxTokens, functions })
-    return { text: result.text, completeMessage: result.text, type: 'text' }
+    return { ...result, completeMessage: result.text }
   }
 }
 

@@ -1,5 +1,5 @@
 const { cleanMessage } = require('./util')
-const { convertFunctionsToOpenAI, convertFunctionsToGemini } = require('./functions')
+const { convertFunctionsToOpenAI, convertFunctionsToGemini, convertFunctionsToGoogleAIStudio } = require('./functions')
 const { getModelInfo } = require('./util')
 const debug = require('debug')('lxl')
 
@@ -23,8 +23,13 @@ class ChatSession {
 
   async _loadFunctions (functions) {
     const modelInfo = getModelInfo(this.model)
+    this.modelAuthor = modelInfo.author
     this.modelFamily = modelInfo.family
-    if (modelInfo.family === 'openai') {
+    if (modelInfo.author === 'googleaistudio') {
+      const { result, metadata } = await convertFunctionsToGoogleAIStudio(functions)
+      this.functionsPayload = result
+      this.functionsMeta = metadata
+    } else if (modelInfo.family === 'openai') {
       const { result, metadata } = await convertFunctionsToOpenAI(functions)
       this.functionsPayload = result
       this.functionsMeta = metadata
@@ -37,39 +42,45 @@ class ChatSession {
     debug('Loaded function metadata: ' + JSON.stringify(this.functionsMeta))
   }
 
+  async _callFunctionWithArgs (functionName, payload) {
+    const fnMeta = this.functionsMeta[functionName]
+    const fn = this.functions[functionName]
+    // payload is an object of { argName: argValue } ... since order is not guaranteed we need to handle it here
+    const args = []
+    for (const param in payload) {
+      const value = payload[param]
+      const index = fnMeta.argNames.indexOf(param)
+      args[index] = value
+    }
+    // Set default values if they're not provided
+    for (let i = 0; i < fnMeta.args.length; i++) {
+      const meta = fnMeta.args[i]
+      if (!args[i]) {
+        if (meta.default) {
+          args[i] = meta.default
+        }
+      }
+    }
+    const result = await fn.apply(null, args.map(e => e))
+    return result
+  }
+
   // This calls a function and adds the reponse to the context so the model can be called again
   async _callFunction (functionName, payload, metadata) {
-    if (this.modelFamily === 'openai') {
+    if (this.modelAuthor === 'googleaistudio') {
+      let content
+      if (metadata.text) content = metadata.text + '\n'
+      content = content.trim()
+      const arStr = Object.keys(payload).length ? JSON.stringify(payload) : ''
+      content += `\n<FUNCTION_CALL>${functionName}(${arStr})</FUNCTION_CALL>`
+      this.messages.push({ role: 'assistant', content })
+      const result = await this._callFunctionWithArgs(functionName, payload)
+      this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
+    } else if (this.modelFamily === 'openai') {
       // https://openai.com/blog/function-calling-and-other-api-updates
       this.messages.push({ role: 'assistant', function_call: { name: functionName, arguments: JSON.stringify(payload) } })
-
-      const fnMeta = this.functionsMeta[functionName]
-
-      if (this.functionsPayload.length === 0) {
-        const fn = this.functions[functionName]
-        const result = await fn()
-        this.messages.push({ role: 'function', name: functionName, content: result })
-      } else {
-        const fn = this.functions[functionName]
-        // payload is an object of { argName: argValue } ... since order is not guaranteed we need to handle it here
-        const args = []
-        for (const param in payload) {
-          const value = payload[param]
-          const index = fnMeta.argNames.indexOf(param)
-          args[index] = value
-        }
-        // Set default values if they're not provided
-        for (let i = 0; i < fnMeta.args.length; i++) {
-          const meta = fnMeta.args[i]
-          if (args[i] === undefined) {
-            if (meta.default !== undefined) {
-              args[i] = meta.default
-            }
-          }
-        }
-        const result = await fn.apply(null, args.map(e => e))
-        this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
-      }
+      const result = await this._callFunctionWithArgs(functionName, payload)
+      this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
     } else if (this.modelFamily === 'gemini') {
       /*
 {
@@ -99,35 +110,10 @@ class ChatSession {
   ]
 }
 */
-      const fnMeta = this.functionsMeta[functionName]
-      this.messages.push({ role: 'model', parts: [{ functionCall: { name: functionName, args: payload } }] })
 
-      // if there's 1 function, we can just call it directly
-      if (this.functionsPayload.length === 0) {
-        const fn = this.functions[functionName]
-        const result = await fn()
-        this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: { name: functionName, content: result } } }] })
-      } else {
-        const fn = this.functions[functionName]
-        // payload is an object of { argName: argValue } ... since order is not guaranteed we need to handle it here
-        const args = []
-        for (const param in payload) {
-          const value = payload[param]
-          const index = fnMeta.argNames.indexOf(param)
-          args[index] = value
-        }
-        // Set default values if they're not provided
-        for (let i = 0; i < fnMeta.args.length; i++) {
-          const meta = fnMeta.args[i]
-          if (!args[i]) {
-            if (meta.default) {
-              args[i] = meta.default
-            }
-          }
-        }
-        const result = await fn.apply(null, args.map(e => e))
-        this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: { name: functionName, content: result } } }] })
-      }
+      this.messages.push({ role: 'model', parts: [{ functionCall: { name: functionName, args: payload } }] })
+      const result = await this._callFunctionWithArgs(functionName, payload)
+      this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: { name: functionName, content: result } } }] })
     }
   }
 
@@ -136,7 +122,7 @@ class ChatSession {
   }
 
   async _submitRequest (chunkCb) {
-    // console.log('Sending to', this.model, this.messages)
+    debug('Sending to', this.model, this.messages)
     const response = await this.service.requestStreamingChat(this.model, {
       maxTokens: this.maxTokens,
       messages: this.messages,
@@ -145,11 +131,19 @@ class ChatSession {
     }, chunkCb)
     debug('Streaming response', JSON.stringify(response))
     if (response.type === 'function') {
-      this._calledFunctionsForRound.push(response.fnName)
+      this._calledFunctionsForRound.push(response.fnCalls)
+      if (Array.isArray(response.fnCalls) && !response.fnCalls.length) {
+        throw new Error('No function calls returned, but type is function')
+      }
       // we need to call the function with the payload and then send the result back to the model
       for (const index in response.fnCalls) {
         const call = response.fnCalls[index]
-        await this._callFunction(call.name, JSON.parse(call.args))
+        await this._callFunction(call.name, call.args ? JSON.parse(call.args) : {}, response)
+      }
+      // Google AI Studio: We can only send one req/second... TODO: throttle this internally
+      if (this.modelAuthor === 'googleaistudio') {
+        // throttle a bit to avoid rate limiting :(
+        await new Promise((resolve) => setTimeout(resolve, 500))
       }
       return this._submitRequest(chunkCb)
     } else if (response.type === 'text') {
