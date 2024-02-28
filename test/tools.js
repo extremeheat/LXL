@@ -1,3 +1,5 @@
+const { preMarkdown } = require('../src/tools/mdp')
+const assert = require('assert')
 const fs = require('fs')
 const { tools } = require('langxlang')
 
@@ -23,10 +25,33 @@ async function testCodebase () {
   console.log(files)
 }
 
+function testMarkdownPreprocessing () {
+  const done = preMarkdown(`Your name is %%%(NAME)%%%, and you answer questions for the user%%%[, based on your prompt] if HAS_PROMPT%%%.
+  You are running over %%%[the Google AI Studio playground] if IS_AI_STUDIO else [the %%%(LLM_NAME)%%% API]%%%.
+  %%%if IS_AI_STUDIO
+  You are running in Google AI Studio.
+  %%%else
+  You are running via API.
+  %%%endif
+  Done!
+  `, {
+    NAME: 'Omega',
+    HAS_PROMPT: true,
+    IS_AI_STUDIO: false,
+    LLM_NAME: 'Gemini 1.5 Pro'
+  })
+  assert.strictEqual(done, 'Your name is Omega, and you answer questions for the user, based on your prompt.\n' +
+  '  You are running over the Gemini 1.5 Pro API.\n' +
+  '  You are running via API.\n' +
+  '  Done!\n' +
+  '  ')
+}
+
 async function main () {
   await testViz()
   await testCodebase()
   await testVizGemini15()
+  testMarkdownPreprocessing()
 }
 
 main()

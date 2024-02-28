@@ -57,8 +57,25 @@ declare module 'langxlang' {
       // or an array of regexes of which one needs to match for inclusion
       matching?: (fileName: string) => boolean | RegExp[]
     }): Promise<[absolutePath: string, relativePath: string, contents: string][]>
+    // Pre-processes markdown and replaces variables and conditionals with data from `vars`
+    loadPrompt(text: string, vars: Record<string, string>): string
+    // Loads a file from disk (from current script's relative path or absolute path) and
+    // replaces variables and conditionals with data from `vars`
+    importPromptSync(filePath: string, vars: Record<string, string>): string
+    // Loads a file from disk (from current script's relative path or absolute path) and
+    // replaces variables and conditionals with data from `vars`
+    importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
   }
 
   const tools: Tools
   const Func: Func
+
+  // Pre-processes markdown and replaces variables and conditionals with data from `vars`
+  function loadPrompt(text: string, vars: Record<string, string>): string
+  // Loads a file from disk (from current script's relative path or absolute path) and
+  // replaces variables and conditionals with data from `vars`
+  function importPromptSync(filePath: string, vars: Record<string, string>): string
+  // Loads a file from disk (from current script's relative path or absolute path) and
+  // replaces variables and conditionals with data from `vars`
+  function importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
 }

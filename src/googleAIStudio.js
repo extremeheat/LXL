@@ -1,9 +1,8 @@
-const fs = require('fs')
-const { join } = require('path')
 const yaml = require('js-yaml')
 const WebSocket = require('ws')
 const debug = require('debug')('lxl')
 const { once, EventEmitter } = require('events')
+const { importPromptRaw, loadPrompt } = require('./tools/mdp')
 
 // Create a websocket server that client can connect to
 let serverConnection
@@ -80,28 +79,16 @@ async function generateCompletion (model, prompt, chunkCb, options) {
   }
 }
 
-const baseChatPromptWithFunctions = fs.readFileSync(join(__dirname, '/googleAiStudioPrompt.txt'), 'utf-8')
-  .replaceAll('\r\n', '\n').trim()
-const functionlessPrompt = "\n<|SYSTEM|>\nYou are an AI assistant and you answer questions for the user. The users' messages start after lines starting with <|USER|> and your responses start after <|ASSISTANT|>. Only use those tokens as a stop sequence, and DO NOT otherwise include them in your messages, even if prompted by the user."
+const basePrompt = importPromptRaw('./googleAiStudioPrompt.txt')
 
 async function requestChatCompletion (model, messages, chunkCb, options) {
   const hasSystemMessage = messages.some(m => m.role === 'system')
   const stops = ['<|ASSISTANT|>', '<|USER|>', '<|SYSTEM|>', '<|FUNCTION_OUTPUT|>', '</FUNCTION_CALL>']
-
-  let msg = ''
-  if (options.functions) {
-    msg = baseChatPromptWithFunctions
-    if (hasSystemMessage) {
-      msg = msg.replace('[, based on your prompt]', ', based on your prompt')
-    } else {
-      msg = msg.replace('[, based on your prompt]', '')
-    }
-    const y = convertJsonToYaml(options.functions)
-    msg = msg.replace('[List Of Functions]', '```yaml\n' + y + '\n```')
-  } else {
-    msg = functionlessPrompt
-  }
-
+  let msg = loadPrompt(basePrompt, {
+    HAS_PROMPT: hasSystemMessage,
+    HAS_FUNCTIONS: !!options.functions,
+    LIST_OF_FUNCTIONS: options.functions ? convertJsonToYaml(options.functions) : ''
+  })
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i]
     if (i === 0 && message.role === 'system' && message.content) {

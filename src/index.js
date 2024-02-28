@@ -5,6 +5,7 @@ const { appDataDir, CompletionService } = require('./CompletionService')
 const GoogleAIStudioCompletionService = require('./GoogleAIStudioCompletionService')
 const ChatSession = require('./ChatSession')
 const functions = require('./functions')
+const tools = require('./tools')
 
 module.exports = {
   appDataDir,
@@ -15,5 +16,8 @@ module.exports = {
   palm2,
   gemini,
   Func: { Arg: functions.Arg, Desc: functions.Desc },
-  tools: require('./tools')
+  tools,
+  importPromptSync: tools.importPromptSync,
+  importPrompt: tools.importPrompt,
+  loadPrompt: tools.loadPrompt
 }
