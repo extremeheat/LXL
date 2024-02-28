@@ -96,5 +96,11 @@ can be defined to listen to bits of the message stream as it's being written by 
 LXL provides a templating system, which is described in detail [here](./docs/MarkdownProcessing.md).
 The relevant exposed LXL functions are:
 * `loadPrompt(text: string, variables: Record<string, string>): string` - Load a text prompt with the given variables
+```js
+loadPrompt("Hello, may name is %%%(NAME)%%%", { NAME: "Omega" })
+// "Hello, may name is Omega"
+```
 * `importPromptSync(path: string, variables: Record<string, string>): string` - Load a prompt from a file with the given variables
 * `importPrompt(path: string, variables: Record<string, string>): Promise<string>` - Load a prompt from a file with the given variables, asynchronously returning a Promise
+
+For the full API, see the [TypeScript types](./src/index.d.ts).

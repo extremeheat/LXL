@@ -11,7 +11,7 @@ You are running over %%%[the Google AI Studio playground] if IS_AI_STUDIO else [
 Would be loaded in JS like this:
 ```js
 const { importPromptSync } = require('langxlang')
-const prompt = importPromptSync('path-to-prompt.md', { NAME: 'Omega', HAS_PROMPT: true, IS_AI_STUDIO: false, LLM_NAME: 'Gemini 1.5 Pro })
+const prompt = importPromptSync('path-to-prompt.md', { NAME: 'Omega', HAS_PROMPT: true, IS_AI_STUDIO: false, LLM_NAME: 'Gemini 1.5 Pro' })
 ```
 
 And would result in:
