@@ -36,7 +36,8 @@ function preMarkdown (text, vars = {}) {
   for (let i = 0; i < tokens.length; i++) {
     if (tokens[i][1] === 'var') {
       const varName = tokens[i][0].slice(TOKEN_VAR_START.length, -TOKEN_VAR_END.length)
-      tokens[i] = [vars[varName], 'text']
+      const replacement = vars[varName] || ''
+      tokens[i] = [replacement, 'text']
     }
   }
   // Now recombine the tokens
@@ -197,6 +198,26 @@ function loadPrompt (text, vars) {
   return preMarkdown(text.replaceAll('\r\n', '\n'), vars).trim()
 }
 
+function importPromptRaw (path) {
+  let fullPath = path
+  if (path.startsWith('.')) {
+    const caller = getCaller(1)
+    const prefix = process.platform === 'win32' ? 'file:///' : 'file://'
+    const callerDir = dirname(caller.replace(prefix, ''))
+    fullPath = join(callerDir, path)
+  }
+  let data
+  try {
+    data = fs.readFileSync(fullPath, 'utf-8')
+  } catch (e) {
+    if (!path.startsWith('.')) {
+      throw new Error(`Failed to load prompt at specified path '${path}'. If you want to load a prompt relative to your script's current directory, you need to pass a relative path starting with './'`)
+    }
+    throw e
+  }
+  return data.replaceAll('\r\n', '\n').trim()
+}
+
 function importPromptSync (path, vars) {
   let fullPath = path
   if (path.startsWith('.')) {
@@ -236,4 +257,4 @@ async function importPrompt (path, vars) {
   }
 }
 
-module.exports = { preMarkdown, loadPrompt, importPromptSync, importPrompt }
+module.exports = { preMarkdown, loadPrompt, importPromptSync, importPrompt, importPromptRaw }
