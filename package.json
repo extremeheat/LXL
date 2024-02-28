@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "scripts": {
-    "test": "",
+    "test": "mocha --bail test/*.test.js",
     "pretest": "npm run lint",
     "lint": "standard",
     "fix": "standard --fix"
@@ -37,6 +37,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
     "acorn": "^8.11.3",
+    "caller": "^1.1.0",
     "debug": "^4.3.4",
     "openai": "^4.28.0",
     "ws": "^8.16.0"
