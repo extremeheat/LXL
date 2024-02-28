@@ -196,4 +196,15 @@ async function convertFunctionsToGemini (functions) {
   return { result, metadata: openai.metadata }
 }
 
-module.exports = { Arg, Desc, processFunctions, convertArgToOpenAI, convertFunctionsToOpenAI, convertFunctionsToGemini }
+async function convertFunctionsToGoogleAIStudio (functions) {
+  const openai = await convertFunctionsToOpenAI(functions)
+  const result = openai.result.map((e) => {
+    return [e.function.name, {
+      description: e.function.description,
+      parameters: e.function.parameters
+    }]
+  })
+  return { result: Object.fromEntries(result), metadata: openai.metadata }
+}
+
+module.exports = { Arg, Desc, processFunctions, convertArgToOpenAI, convertFunctionsToOpenAI, convertFunctionsToGemini, convertFunctionsToGoogleAIStudio }

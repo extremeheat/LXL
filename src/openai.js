@@ -12,7 +12,7 @@ async function generateCompletion (model, system, user, options = {}) {
     model
   })
   const choice = completion.choices[0]
-  console.log(completion.choices[0])
+  // console.log(completion.choices[0])
   return choice
 }
 

@@ -1,4 +1,5 @@
 const { CompletionService } = require('../CompletionService')
+const GoogleAIStudioCompletionService = require('../GoogleAIStudioCompletionService')
 const { getModelInfo } = require('../util')
 
 function makeVizHtml (data) {
@@ -8,7 +9,7 @@ function makeVizHtml (data) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LLM Output Viz</title>
+  <title>${data.title}</title>
   <style>
     pre {
       max-width: 25vw;
@@ -30,7 +31,7 @@ function makeVizHtml (data) {
   </style>
 </head>
 <body>
-  <button id="wordwrap">Toggle Word Wrap</button>
+  <button id="wordwrap">Toggle Word Wrap</button> <strong>${data.description}</strong>
   <div id="grid" style='display: flex; flex-direction: row;'>
     <div>
       <h3>System Prompt</h3>
@@ -73,17 +74,34 @@ function makeVizHtml (data) {
   `
 }
 
-async function makeVizForPrompt (system, user, models) {
+async function makeVizForPrompt (system, user, models, options) {
   const service = new CompletionService()
+  let aiStudioService
   const data = { models: [], outputs: {} }
   for (const model of models) {
-    const { text } = await service.requestCompletion(model, system, user)
     const modelInfo = getModelInfo(model)
+
+    // TEMP: AIStudio automation
+    if (modelInfo.author === 'googleaistudio') {
+      aiStudioService ??= new GoogleAIStudioCompletionService(options?.aiStudioPort)
+      await aiStudioService.ready
+      const { text } = await aiStudioService.requestCompletion(model, system, user)
+      data.models.push([modelInfo.displayName, modelInfo.safeId])
+      data.outputs[modelInfo.safeId] = text
+      continue
+    }
+
+    const { text } = await service.requestCompletion(model, system, user)
     data.models.push([modelInfo.displayName, modelInfo.safeId])
     data.outputs[modelInfo.safeId] = text
   }
+
+  aiStudioService?.stop()
+
   data.system = system
   data.user = user
+  data.title = options?.title || 'LLM Output Viz'
+  data.description = options?.description || 'Model Outputs'
   return makeVizHtml(data)
 }
 

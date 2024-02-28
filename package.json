@@ -38,6 +38,7 @@
     "@google/generative-ai": "^0.2.1",
     "acorn": "^8.11.3",
     "debug": "^4.3.4",
-    "openai": "^4.28.0"
+    "openai": "^4.28.0",
+    "ws": "^8.16.0"
   }
 }
