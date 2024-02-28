@@ -1,5 +1,3 @@
-const fs = require('fs')
-const { join } = require('path')
 const yaml = require('js-yaml')
 const WebSocket = require('ws')
 const debug = require('debug')('lxl')
@@ -110,7 +108,7 @@ async function requestChatCompletion (model, messages, chunkCb, options) {
   }
   msg += '\n<|ASSISTANT|>'
 
-  console.debug('Sending chat completion request to server', model, msg)
+  debug('Sending chat completion request to server', model, msg)
 
   const response = await generateCompletion(model, msg, chunkCb, {
     ...options,

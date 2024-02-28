@@ -198,44 +198,36 @@ function loadPrompt (text, vars) {
   return preMarkdown(text.replaceAll('\r\n', '\n'), vars).trim()
 }
 
-function importPromptRaw (path) {
+function readSync (path, caller) {
   let fullPath = path
-  if (path.startsWith('.')) {
-    const caller = getCaller(1)
+  if (caller) {
+    // via https://github.com/extremeheat/JSPyBridge/blob/f28b099e43a2a9beb3c42c3b6426b65e3c3daf06/src/pythonia/index.js#L67
     const prefix = process.platform === 'win32' ? 'file:///' : 'file://'
     const callerDir = dirname(caller.replace(prefix, ''))
     fullPath = join(callerDir, path)
   }
-  let data
   try {
-    data = fs.readFileSync(fullPath, 'utf-8')
+    return fs.readFileSync(fullPath, 'utf-8')
   } catch (e) {
     if (!path.startsWith('.')) {
       throw new Error(`Failed to load prompt at specified path '${path}'. If you want to load a prompt relative to your script's current directory, you need to pass a relative path starting with './'`)
     }
     throw e
   }
+}
+
+function importPromptRaw (path) {
+  const data = path.startsWith('.')
+    ? readSync(path, getCaller(1))
+    : readSync(path)
   return data.replaceAll('\r\n', '\n').trim()
 }
 
 function importPromptSync (path, vars) {
-  let fullPath = path
-  if (path.startsWith('.')) {
-    // via https://github.com/extremeheat/JSPyBridge/blob/f28b099e43a2a9beb3c42c3b6426b65e3c3daf06/src/pythonia/index.js#L67
-    const caller = getCaller(1)
-    const prefix = process.platform === 'win32' ? 'file:///' : 'file://'
-    const callerDir = dirname(caller.replace(prefix, ''))
-    fullPath = join(callerDir, path)
-  }
-  try {
-    const text = fs.readFileSync(fullPath, 'utf-8')
-    return loadPrompt(text, vars)
-  } catch (e) {
-    if (!path.startsWith('.')) {
-      throw new Error(`Failed to load prompt at specified path '${path}'. If you want to load a prompt relative to your script's current directory, you need to pass a relative path starting with './'`)
-    }
-    throw e
-  }
+  const data = path.startsWith('.')
+    ? readSync(path, getCaller(1))
+    : readSync(path)
+  return loadPrompt(data, vars)
 }
 
 async function importPrompt (path, vars) {
