@@ -1,5 +1,5 @@
 /* eslint-env mocha */
-const { importPromptSync } = require('../src/tools/mdp')
+const { importPromptSync } = require('langxlang')
 const assert = require('assert')
 
 describe('Basic', () => {

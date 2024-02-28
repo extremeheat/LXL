@@ -69,4 +69,13 @@ declare module 'langxlang' {
 
   const tools: Tools
   const Func: Func
+
+  // Pre-processes markdown and replaces variables and conditionals with data from `vars`
+  function loadPrompt(text: string, vars: Record<string, string>): string
+  // Loads a file from disk (from current script's relative path or absolute path) and
+  // replaces variables and conditionals with data from `vars`
+  function importPromptSync(filePath: string, vars: Record<string, string>): string
+  // Loads a file from disk (from current script's relative path or absolute path) and
+  // replaces variables and conditionals with data from `vars`
+  function importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
 }
