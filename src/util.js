@@ -27,4 +27,10 @@ function getModelInfo (model) {
   }
 }
 
-module.exports = { cleanMessage, getModelInfo, knownModelInfo, knownModels }
+async function sleep (ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+module.exports = { sleep, cleanMessage, getModelInfo, knownModelInfo, knownModels }

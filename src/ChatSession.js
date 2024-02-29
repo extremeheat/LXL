@@ -140,11 +140,6 @@ class ChatSession {
         const call = response.fnCalls[index]
         await this._callFunction(call.name, call.args ? JSON.parse(call.args) : {}, response)
       }
-      // Google AI Studio: We can only send one req/second... TODO: throttle this internally
-      if (this.modelAuthor === 'googleaistudio') {
-        // throttle a bit to avoid rate limiting :(
-        await new Promise((resolve) => setTimeout(resolve, 500))
-      }
       return this._submitRequest(chunkCb)
     } else if (response.type === 'text') {
       this.messages.push({ role: 'assistant', content: response.completeMessage })

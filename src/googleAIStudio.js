@@ -3,11 +3,14 @@ const WebSocket = require('ws')
 const debug = require('debug')('lxl')
 const { once, EventEmitter } = require('events')
 const { importPromptRaw, loadPrompt } = require('./tools/mdp')
+const { sleep } = require('./util')
 
 // Create a websocket server that client can connect to
 let serverConnection
 let serverPromise
 let wss
+
+let throttle, isBusy
 
 function runServer (port = 8095) {
   if (serverPromise) return serverPromise
@@ -60,8 +63,13 @@ function convertJsonToYaml (json) {
 
 async function generateCompletion (model, prompt, chunkCb, options) {
   await runServer()
+  await throttle
+  if (isBusy) {
+    throw new Error('Only one request at a time is supported with AI Studio, please wait for the previous request to finish')
+  }
   prompt = prompt.trim() + '\n'
   // console.log('Sending completion request to server', model, prompt)
+  isBusy = true
   serverConnection.emit('completionRequest', { model, prompt, stopSequences: options?.stopSequences })
   function completionChunk (response) {
     chunkCb?.(response)
@@ -74,6 +82,9 @@ async function generateCompletion (model, prompt, chunkCb, options) {
   serverConnection.off('completionChunk', completionChunk)
   chunkCb?.({ done: true, delta: '\n' })
   // console.log('Done')
+  // If the user is using streaming, they won't face any delay getting the response
+  throttle = await sleep(2000)
+  isBusy = false
   return {
     text: response.text
   }
