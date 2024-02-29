@@ -65,6 +65,10 @@ declare module 'langxlang' {
     // Loads a file from disk (from current script's relative path or absolute path) and
     // replaces variables and conditionals with data from `vars`
     importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
+    // Various string manipulation tools to minify/strip down strings
+    stripping: {
+      stripMarkdown(input: string, options?: { stripEmailQuotes?: boolean, replacements?: Map<string | RegExp, string>}): string
+    }
   }
 
   const tools: Tools
