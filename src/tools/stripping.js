@@ -2,6 +2,14 @@
 // that are needed to represent the program. In languages like Java, there's lots of syntax tokens that are needed for the program
 // to run, but not needed for the purpose of abstractly understanding program logic. Think things like public/private, final, etc.
 
+function removeExtraLines (str) {
+  return str.replace(/\n{3,}/g, '\n\n')
+}
+
+function normalizeLineEndings (str) {
+  return str.replace(/\r\n/g, '\n')
+}
+
 function stripJava (code, options) {
   // First, we need to "tokenize" the code, by splitting it into 3 types of data: comments, strings, and code.
   const tokens = []
@@ -72,7 +80,9 @@ function stripJava (code, options) {
     for (const entry of tokens) {
       if (entry[1] === 'code') {
         for (const [old, now] of options.replacements) {
-          entry[0] = entry[0].replaceAll(old, now)
+          entry[0] = old instanceof RegExp
+            ? entry[0].replace(old, now)
+            : entry[0].replaceAll(old, now)
         }
       }
     }
@@ -214,7 +224,9 @@ function stripPHP (code, options = {}) {
     for (const entry of tokens) {
       if (entry[1] === 'code') {
         for (const [old, now] of options.replacements) {
-          entry[0] = entry[0].replaceAll(old, now)
+          entry[0] = old instanceof RegExp
+            ? entry[0].replace(old, now)
+            : entry[0].replaceAll(old, now)
         }
       }
     }
@@ -332,7 +344,9 @@ function stripGo (code, options) {
     for (const entry of tokens) {
       if (entry[1] === 'code') {
         for (const [old, now] of options.replacements) {
-          entry[0] = entry[0].replaceAll(old, now)
+          entry[0] = old instanceof RegExp
+            ? entry[0].replace(old, now)
+            : entry[0].replaceAll(old, now)
         }
       }
     }
@@ -376,4 +390,92 @@ function stripGo (code, options) {
   return result
 }
 
-module.exports = { stripJava, stripPHP, stripGo }
+function removeNonAscii (str) {
+  return str.replace(/[^\x00-\x7F]/g, '') // eslint-disable-line no-control-regex
+}
+
+function removeSpecialUnicode (str) {
+  // Keeps ASCII, extended Unicode for other languages, spaces, punctuation, and emojis
+  return str.replace(/[^\p{L}\p{N}\p{Z}\p{P}\p{S}\p{Sc}\p{Sk}\p{So}\p{Sm}\t\n]/gu, '')
+}
+
+function strOnlyContainsCharExcludingWhitespace (str, char) {
+  let found = false
+  for (const c of str) {
+    if (c === char) {
+      found = true
+    } else if (c !== ' ' && c !== '\t') {
+      return false
+    }
+  }
+  return found
+}
+
+// This mainly erases extraneous new lines outside of code blocks, including ones with empty block quotes
+function stripMarkdown (comment, options = {}) {
+  const isACodeToken = (token) => token.startsWith('```') && token.endsWith('```')
+  if (!comment) return ''
+  comment = normalizeLineEndings(comment)
+  comment = removeSpecialUnicode(comment)
+  // First, split by any codeblocks
+  const tokens = []
+  let inCodeBlock = false
+  let temp = ''
+  for (let i = 0; i < comment.length; i++) {
+    const currentChar = comment[i]
+    const nextChar = comment[i + 1]
+    const nextNextChar = comment[i + 2]
+    if (currentChar === '`' && nextChar === '`' && nextNextChar === '`') {
+      inCodeBlock = !inCodeBlock
+      if (inCodeBlock) {
+        tokens.push(temp)
+        temp = ''
+      } else {
+        tokens.push('```' + temp + '```')
+        temp = ''
+      }
+      i += 2
+    } else {
+      temp += currentChar
+    }
+  }
+  tokens.push(temp)
+  // Now go through the tokens
+  const updated = []
+  for (const token of tokens) {
+    if (isACodeToken(token)) {
+      // Don't update code
+      updated.push(token)
+    } else {
+      // Replace \n\n or any extra \n's with one \n
+      let update = removeExtraLines(token)
+      if (options.replacements) {
+        for (const replacement of options.replacements) {
+          update = replacement[0] instanceof RegExp
+            ? update.replace(replacement[0], replacement[1])
+            : update.replaceAll(replacement[0], replacement[1])
+        }
+      }
+      const final = []
+      for (const line of update.split('\n')) {
+        const tline = line.trim()
+        if (tline === '') continue
+        if (options.stripEmailQuotes) {
+          if (tline.startsWith('On ') && tline.endsWith('> wrote:')) {
+            break
+          }
+        }
+        // if the line only has ">" blockquote characters, skip it
+        if (strOnlyContainsCharExcludingWhitespace(tline, '>')) {
+          continue
+        }
+        final.push(line)
+      }
+      updated.push(final.join('\n'))
+    }
+  }
+  const result = updated.join('\n')
+  return result.trim()
+}
+
+module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, removeNonAscii }

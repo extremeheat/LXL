@@ -5,8 +5,9 @@
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "scripts": {
-    "test": "mocha --bail test/*.test.js",
+    "test": "npm run mocha",
     "pretest": "npm run lint",
+    "mocha": "mocha --bail test/*.test.js",
     "lint": "standard",
     "fix": "standard --fix"
   },
