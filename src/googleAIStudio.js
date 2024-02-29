@@ -1,4 +1,4 @@
-const yaml = require('js-yaml')
+const { encodeYaml } = require('./tools/yaml')
 const WebSocket = require('ws')
 const debug = require('debug')('lxl')
 const { once, EventEmitter } = require('events')
@@ -56,11 +56,6 @@ function stopServer () {
   serverPromise = null
 }
 
-function convertJsonToYaml (json) {
-  const data = json
-  return yaml.dump(data).trim()
-}
-
 async function generateCompletion (model, prompt, chunkCb, options) {
   await runServer()
   await throttle
@@ -98,7 +93,7 @@ async function requestChatCompletion (model, messages, chunkCb, options) {
   let msg = loadPrompt(basePrompt, {
     HAS_PROMPT: hasSystemMessage,
     HAS_FUNCTIONS: !!options.functions,
-    LIST_OF_FUNCTIONS: options.functions ? convertJsonToYaml(options.functions) : ''
+    LIST_OF_FUNCTIONS: options.functions ? encodeYaml(options.functions) : ''
   })
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i]

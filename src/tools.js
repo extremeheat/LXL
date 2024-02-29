@@ -1,5 +1,6 @@
 const codebase = require('./tools/codebase')
 const viz = require('./tools/viz')
+const yaml = require('./tools/yaml')
 const { importPromptSync, importPrompt, loadPrompt, preMarkdown } = require('./tools/mdp')
 
 module.exports = {
@@ -8,5 +9,6 @@ module.exports = {
   preMarkdown,
   loadPrompt,
   importPromptSync,
-  importPrompt
+  importPrompt,
+  encodeYAML: yaml.encodeYaml
 }
