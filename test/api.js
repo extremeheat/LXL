@@ -72,7 +72,6 @@ async function testSessionWithGuidance () {
   console.log('Done', message)
 }
 
-
 function getWeather (
   location = Arg({ type: String, description: 'Specify the location' }),
   unit = Arg({ type: ['C', 'F'], description: 'Specify the unit', default: 'C' })

@@ -36,7 +36,7 @@ class CompletionService {
   async _requestCompletionOpenAI (model, system, user) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
     const guidance = system?.guidanceText || user?.guidanceText || ''
-    const result = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, { 
+    const result = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
       apiKey: this.openaiApiKey,
       guidanceMessage: guidance
     })

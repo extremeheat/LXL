@@ -155,7 +155,7 @@ class ChatSession {
     if (message.guidanceText) {
       guidance = { role: 'assistant', content: message.guidanceText }
       this.messages.push(guidance)
-      chunkCb?.({ done: false, delta: message.guidanceText, content: message.guidanceText})
+      chunkCb?.({ done: false, delta: message.guidanceText, content: message.guidanceText })
     }
     this._calledFunctionsForRound = []
     const response = await this._submitRequest(chunkCb)
