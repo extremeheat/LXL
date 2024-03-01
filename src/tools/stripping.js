@@ -411,10 +411,12 @@ function strOnlyContainsCharExcludingWhitespace (str, char) {
   return found
 }
 
-function tokenizeMarkdown (comment) {
+function tokenizeMarkdown (comment, options) {
+  // console.log('Tokenize', comment)
   const tokens = []
   let tokenSoFar = ''
-  let inCodeBlock = false; let inCodeLang
+  let inCodeBlock = false
+  let inCodeLang
   for (let i = 0; i < comment.length; i++) {
     const currentChar = comment[i]
     const slice = comment.slice(i)
@@ -441,7 +443,13 @@ function tokenizeMarkdown (comment) {
       }
     }
   }
-  if (inCodeBlock) throw new Error('Unmatched code block')
+  if (inCodeBlock) {
+    if (options.allowMalformed) {
+      tokens.push([tokenSoFar, 'text'])
+    } else {
+      throw new Error('Unmatched code block')
+    }
+  }
   tokens.push([tokenSoFar, 'text'])
   return tokens
 }
@@ -452,7 +460,7 @@ function stripMarkdown (comment, options = {}) {
   comment = normalizeLineEndings(comment)
   comment = removeSpecialUnicode(comment)
   // First, split by any codeblocks
-  const tokens = tokenizeMarkdown(comment)
+  const tokens = tokenizeMarkdown(comment, options)
   // Now go through the tokens
   const updated = []
   for (const token of tokens) {

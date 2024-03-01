@@ -27,7 +27,7 @@ function createTypeWriterEffectStream (to = process.stdout) {
 }
 
 function extractCodeblockFromMarkdown (md) {
-  const tokens = stripping.tokenizeMarkdown(stripping.normalizeLineEndings(md))
+  const tokens = stripping.tokenizeMarkdown(stripping.normalizeLineEndings(md), {})
   return tokens.reduce((acc, token) => {
     if (token[1] === 'code') {
       acc.push({

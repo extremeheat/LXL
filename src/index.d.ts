@@ -85,7 +85,11 @@ declare module 'langxlang' {
     importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
     // Various string manipulation tools to minify/strip down strings
     stripping: {
-      stripMarkdown(input: string, options?: { stripEmailQuotes?: boolean, replacements?: Map<string | RegExp, string> }): string
+      stripMarkdown(input: string, options?: { 
+        stripEmailQuotes?: boolean,
+        replacements?: Map<string | RegExp, string>,
+        allowMalformed?: boolean
+      }): string
     }
     // Extracts code blocks from markdown
     extractCodeblockFromMarkdown(markdownInput: string): { raw: string, lang: string, code: string }[]

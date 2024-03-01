@@ -203,7 +203,7 @@ function preMarkdown (text, vars = {}) {
 }
 
 function loadPrompt (text, vars) {
-  const str = preMarkdown(text.replaceAll('\r\n', '\n'), vars).trim()
+  const str = preMarkdown(text.replaceAll('\r\n', '\n'), vars)
   const TOKEN_GUIDANCE_START = '%%%$GUIDANCE_START$%%%'
   const guidanceText = str.indexOf(TOKEN_GUIDANCE_START)
   if (guidanceText !== -1) {
@@ -237,7 +237,7 @@ function importPromptRaw (path) {
   const data = path.startsWith('.')
     ? readSync(path, getCaller(1))
     : readSync(path)
-  return data.replaceAll('\r\n', '\n').trim()
+  return data.replaceAll('\r\n', '\n')
 }
 
 function importPromptSync (path, vars) {
