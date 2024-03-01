@@ -478,4 +478,4 @@ function stripMarkdown (comment, options = {}) {
   return result.trim()
 }
 
-module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, removeNonAscii }
+module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, removeNonAscii, normalizeLineEndings }

@@ -22,9 +22,11 @@ const { ChatSession, CompletionService } = require('langxlang')
 
 #### Requesting a basic completion from a model
 
+*Note: as described below in API section, the keys can be read via the file system to avoid hardcoding them in the code or environment variables. The risk of API key leakage is reduced by reading from the file system, so it's recommended that you use that approach if you can.*
+
 ```js
 const service = new CompletionService({ openai: [key], gemini: [key] })
-const response = await service.requestCompletion('gpt-3.5-turbo-16k', /* empty system prompt */, 'Tell me about yourself')
+const response = await service.requestCompletion('gpt-3.5-turbo-16k', /* empty system prompt */ '', 'Tell me about yourself')
 console.log(response.text)
 ```
 

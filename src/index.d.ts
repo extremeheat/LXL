@@ -44,19 +44,28 @@ declare module 'langxlang' {
     sendMessage(userMessage: string, chunkCallback: ({ content: string }) => void): Promise<string>
   }
 
+  interface CollectFolderOptions {
+    // What extension of files in the repo to include
+    extension?: string
+    // Either a function that returns true if the file should be included
+    // or an array of regexes of which one needs to match for inclusion
+    matching?: (fileName: string) => boolean | RegExp[]
+  }
+
   interface Tools {
     // Generate HTML that shows side-by-side outputs for the system/user prompt across different models.
     makeVizForPrompt(systemPrompt: string, userPrompt: string, models: Model[], options?: { title?: string, description?: string, aiStudioPort?: number }): Promise<string>
+    // Returns a JS object with a list of files in a folder
+    collectFolderFiles(folderPath: string, options: CollectFolderOptions): Promise<[absolutePath: string, relativePath: string, contents: string][]>
     // Returns a JS object with a list of files in a GitHub repo
-    collectGithubRepoFiles(repo: string, options: {
-      // What extension of files in the repo to include
-      extension?: string,
+    collectGithubRepoFiles(repo: string, options: CollectFolderOptions & {
       // The branch to use
       branch?: string,
-      // Either a function that returns true if the file should be included
-      // or an array of regexes of which one needs to match for inclusion
-      matching?: (fileName: string) => boolean | RegExp[]
     }): Promise<[absolutePath: string, relativePath: string, contents: string][]>
+    concatFilesToMarkdown(files: [absolutePath: string, relativePath: string, contents: string][], options?: { 
+      // Disable if markdown code blocks should have a language tag (e.g. ```python)
+      noCodeblockType: bool 
+    }): string
     // Pre-processes markdown and replaces variables and conditionals with data from `vars`
     loadPrompt(text: string, vars: Record<string, string>): string
     // Loads a file from disk (from current script's relative path or absolute path) and
@@ -67,7 +76,7 @@ declare module 'langxlang' {
     importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
     // Various string manipulation tools to minify/strip down strings
     stripping: {
-      stripMarkdown(input: string, options?: { stripEmailQuotes?: boolean, replacements?: Map<string | RegExp, string>}): string
+      stripMarkdown(input: string, options?: { stripEmailQuotes?: boolean, replacements?: Map<string | RegExp, string> }): string
     }
   }
 

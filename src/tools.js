@@ -7,7 +7,9 @@ const { importPromptSync, importPrompt, loadPrompt, preMarkdown } = require('./t
 module.exports = {
   makeVizForPrompt: viz.makeVizForPrompt,
   stripping,
+  collectFolderFiles: codebase.collectFolderFiles,
   collectGithubRepoFiles: codebase.collectGithubRepoFiles,
+  concatFilesToMarkdown: codebase.concatFilesToMarkdown,
   preMarkdown,
   loadPrompt,
   importPromptSync,
