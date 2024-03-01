@@ -19,7 +19,7 @@ describe('Basic tests', () => {
     assert.strictEqual(done.valueOf(), 'Your name is Omega, and you answer questions for the user, based on your prompt.\n' +
       'You are running over the Gemini 1.5 Pro API.\n' +
       'You are running via API.\n' +
-      'Done!')
+      'Done!\n')
   })
 
   it('yaml encoding works', function () {
