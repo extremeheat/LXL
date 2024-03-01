@@ -59,7 +59,7 @@ If the LLM is in completion mode, we simply append the guidance region to the pr
 
 To notate a region like this, you can use the following marker <code>%%%$GUIDANCE_START$%%%</code> in the prompt:
 
-User Prompt:
+User Prompt (prompt.md):
 <pre>
 Please convert this YAML to JSON:
 ```yml
@@ -74,3 +74,12 @@ This will result in:
 - role: model, message: "```json\n"
 
 And LXL's output will include the <code>```json</code> and the rest of the output as if they were both part of the model's output (this includes streaming).
+
+The usage in JS would look like:
+```js
+const { ChatSession, importPromptSync } = require('langxlang')
+const session = new ChatSession(service, 'gpt-3.5-turbo', '', {})
+// importPromptSync returns an object with the prompt and the guidance, that can be passed to sendMessage
+const prompt = importPromptSync('prompt.md', {})
+session.sendMessage(prompt).then(console.log)
+```
