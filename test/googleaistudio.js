@@ -1,27 +1,6 @@
 /* eslint-disable no-console, no-unused-vars */
-const { GoogleAIStudioCompletionService, ChatSession, Func: { Arg, Desc } } = require('langxlang')
-
-function pleasantWriter () {
-  // Instead of writing everything at once, we want a typewriter effect
-  // so we'll write one character at a time
-  let remainingToWrite = ''
-  const interval = setInterval(() => {
-    if (remainingToWrite.length > 0) {
-      process.stdout.write(remainingToWrite.slice(0, 2))
-      remainingToWrite = remainingToWrite.slice(2)
-    }
-  }, 10)
-
-  return function (chunk) {
-    if (chunk.done) {
-      // Immediately flush whatever is left
-      process.stdout.write(remainingToWrite)
-      process.stdout.write('\n')
-      clearInterval(interval)
-    }
-    remainingToWrite += chunk.delta
-  }
-}
+const { GoogleAIStudioCompletionService, ChatSession, Func: { Arg, Desc }, tools } = require('langxlang')
+const pleasantWriter = tools.createTypeWriterEffectStream
 
 function normalWriter (chunk) {
   process.stdout.write(chunk.delta)

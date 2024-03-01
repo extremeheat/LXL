@@ -16,7 +16,8 @@ class GoogleAIStudioCompletionService {
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
-    const result = await studio.generateCompletion(model, system + '\n' + user, chunkCb)
+    const mergedPrompt = [system, user].join('\n')
+    const result = await studio.generateCompletion(model, mergedPrompt, chunkCb)
     return { text: result.text }
   }
 

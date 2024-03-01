@@ -2,6 +2,7 @@ const { preMarkdown } = require('../src/tools/mdp')
 const assert = require('assert')
 const fs = require('fs')
 const { tools } = require('langxlang')
+const { join } = require('path')
 
 async function testViz () {
   const viz = await tools.makeVizForPrompt('', 'Why is the sky blue?', ['gpt-3.5-turbo'])
@@ -22,7 +23,14 @@ async function testCodebase () {
     extension: '.js',
     matching: [/examples/]
   })
-  console.log(files)
+  console.log(files.length, 'files found')
+
+  const filesInLXL = await tools.collectFolderFiles(join(__dirname, '../'), {
+    matching: [/^examples/]
+  })
+  console.log(filesInLXL.length, 'files in LXL examples')
+  const md = tools.concatFilesToMarkdown(filesInLXL, {})
+  console.log(md)
 }
 
 function testMarkdownPreprocessing () {

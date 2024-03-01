@@ -4,6 +4,15 @@
 function isPrimitive (value) {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
 }
+
+function isSafeString (input) {
+  const unsafeAnywhere = ['#', ':', '\n', '\r', '\t']
+  const unsafeStartings = ['!', '%', '@', '`', "'", '"', '*', '&', '>', '|', '>', '\\', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', '+', '[', ']', '{', '}']
+  if (unsafeAnywhere.some(c => input.includes(c))) return false
+  if (unsafeStartings.some(c => input.startsWith(c))) return false
+  return true
+}
+
 function encodeYaml (obj) {
   const updated = obj
   // We're going to do this the easy way ; turn arrays into objects and just do simple key: value pairs
@@ -23,7 +32,7 @@ function encodeYaml (obj) {
 
     function encodePrimitive (value) {
       if (typeof value === 'string') {
-        if (value.includes('\n') || value.includes(':') || value.includes('#') || value.startsWith('"') || value.endsWith("'")) {
+        if (!isSafeString(value)) {
           let out = '|-\n'
           for (const line of value.split('\n')) {
             out += padding + '  ' + line + '\n'
