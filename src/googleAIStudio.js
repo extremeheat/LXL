@@ -75,11 +75,11 @@ async function generateCompletion (model, prompt, chunkCb, options) {
     throw new Error(response.error)
   }
   serverConnection.off('completionChunk', completionChunk)
-  chunkCb?.({ done: true, delta: '\n' })
   // console.log('Done')
   // If the user is using streaming, they won't face any delay getting the response
   throttle = await sleep(2000)
   isBusy = false
+  chunkCb?.({ done: true, delta: '\n' })
   return {
     text: response.text
   }

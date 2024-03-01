@@ -1,5 +1,6 @@
 declare module 'langxlang' {
   type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro'
+  type ChunkCb = ({ content: string }) => void
   class CompletionService {
     // Creates an instance of completion service.
     // Note: as an alternative to explicitly passing the API keys in the constructor you can: 
@@ -13,13 +14,16 @@ declare module 'langxlang' {
     // Request a non-streaming completion from the model.
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string): Promise<{ text: string }>
   }
-  class GoogleAIStudioCompletionService extends CompletionService {
+  class GoogleAIStudioCompletionService {
     // Creates an instance of GoogleAIStudioCompletionService. The port is the port that the server should listen on.
     constructor(port: number)
     // Promise that resolves when the server is ready to accept requests.
     ready: Promise<void>
     // Stop the server.
     stop(): void
+
+    // Request a non-streaming completion from the model.
+    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, chunkCb?: ChunkCb): Promise<{ text: string }>
   }
 
   interface Func {
@@ -41,7 +45,7 @@ declare module 'langxlang' {
     constructor(completionService: CompletionService, model: Model, systemPrompt: string, options?: { functions?: Functions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
-    sendMessage(userMessage: string, chunkCallback: ({ content: string }) => void): Promise<string>
+    sendMessage(userMessage: string, chunkCallback: ChunkCb): Promise<string>
   }
 
   interface CollectFolderOptions {
@@ -62,10 +66,15 @@ declare module 'langxlang' {
       // The branch to use
       branch?: string,
     }): Promise<[absolutePath: string, relativePath: string, contents: string][]>
+    // Takes output from collectFolderFiles or collectGithubRepoFiles and returns a markdown string from it
     concatFilesToMarkdown(files: [absolutePath: string, relativePath: string, contents: string][], options?: { 
       // Disable if markdown code blocks should have a language tag (e.g. ```python)
       noCodeblockType: bool 
     }): string
+    // Returns a function that can be passed to chunkCb in ChatSession.sendMessage, but with
+    // a type writer effect. This can be helpful for GoogleAIStudioCompletionService, as it
+    // gives big chunks over long periods of time unlike OpenAI APIs. Default pipeTo is process.stdout.
+    createTypeWriterEffectStream(pipeTo?: NodeJS.WritableStream): (chunk) => void
     // Pre-processes markdown and replaces variables and conditionals with data from `vars`
     loadPrompt(text: string, vars: Record<string, string>): string
     // Loads a file from disk (from current script's relative path or absolute path) and
