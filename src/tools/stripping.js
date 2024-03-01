@@ -411,44 +411,57 @@ function strOnlyContainsCharExcludingWhitespace (str, char) {
   return found
 }
 
+function tokenizeMarkdown (comment) {
+  const tokens = []
+  let tokenSoFar = ''
+  let inCodeBlock = false; let inCodeLang
+  for (let i = 0; i < comment.length; i++) {
+    const currentChar = comment[i]
+    const slice = comment.slice(i)
+    if (inCodeBlock) {
+      if (slice.startsWith(inCodeBlock)) {
+        const code = tokenSoFar.slice(inCodeBlock.length + inCodeLang.length + 1) // +1 for the newline
+        tokens.push([tokenSoFar + inCodeBlock, 'code', inCodeLang, code])
+        i += inCodeBlock.length - 1
+        inCodeBlock = false
+        tokenSoFar = ''
+      } else {
+        tokenSoFar += currentChar
+      }
+    } else {
+      const codeMatch = slice.match(/^([`]{3,})([a-zA-Z]*)\n/)
+      if (codeMatch) {
+        tokens.push([tokenSoFar, 'text'])
+        inCodeBlock = codeMatch[1]
+        inCodeLang = codeMatch[2]
+        tokenSoFar = codeMatch[0]
+        i += tokenSoFar.length - 1
+      } else {
+        tokenSoFar += currentChar
+      }
+    }
+  }
+  if (inCodeBlock) throw new Error('Unmatched code block')
+  tokens.push([tokenSoFar, 'text'])
+  return tokens
+}
+
 // This mainly erases extraneous new lines outside of code blocks, including ones with empty block quotes
 function stripMarkdown (comment, options = {}) {
-  const isACodeToken = (token) => token.startsWith('```') && token.endsWith('```')
   if (!comment) return ''
   comment = normalizeLineEndings(comment)
   comment = removeSpecialUnicode(comment)
   // First, split by any codeblocks
-  const tokens = []
-  let inCodeBlock = false
-  let temp = ''
-  for (let i = 0; i < comment.length; i++) {
-    const currentChar = comment[i]
-    const nextChar = comment[i + 1]
-    const nextNextChar = comment[i + 2]
-    if (currentChar === '`' && nextChar === '`' && nextNextChar === '`') {
-      inCodeBlock = !inCodeBlock
-      if (inCodeBlock) {
-        tokens.push(temp)
-        temp = ''
-      } else {
-        tokens.push('```' + temp + '```')
-        temp = ''
-      }
-      i += 2
-    } else {
-      temp += currentChar
-    }
-  }
-  tokens.push(temp)
+  const tokens = tokenizeMarkdown(comment)
   // Now go through the tokens
   const updated = []
   for (const token of tokens) {
-    if (isACodeToken(token)) {
+    if (token[1] === 'code') {
       // Don't update code
-      updated.push(token)
+      updated.push(token[0])
     } else {
       // Replace \n\n or any extra \n's with one \n
-      let update = removeExtraLines(token)
+      let update = removeExtraLines(token[0])
       if (options.replacements) {
         for (const replacement of options.replacements) {
           update = replacement[0] instanceof RegExp
@@ -478,4 +491,4 @@ function stripMarkdown (comment, options = {}) {
   return result.trim()
 }
 
-module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, removeNonAscii, normalizeLineEndings }
+module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, removeNonAscii, normalizeLineEndings, tokenizeMarkdown }

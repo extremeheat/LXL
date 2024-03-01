@@ -87,6 +87,8 @@ declare module 'langxlang' {
     stripping: {
       stripMarkdown(input: string, options?: { stripEmailQuotes?: boolean, replacements?: Map<string | RegExp, string> }): string
     }
+    // Extracts code blocks from markdown
+    extractCodeblockFromMarkdown(markdownInput: string): { raw: string, lang: string, code: string }[]
   }
 
   const tools: Tools
