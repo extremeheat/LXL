@@ -16,10 +16,10 @@ describe('Basic tests', () => {
       LLM_NAME: 'Gemini 1.5 Pro'
     })
     console.log('Markdown pre-processing result', [done])
-    assert.strictEqual(done, 'Your name is Omega, and you answer questions for the user, based on your prompt.\n' +
+    assert.strictEqual(done.valueOf(), 'Your name is Omega, and you answer questions for the user, based on your prompt.\n' +
       'You are running over the Gemini 1.5 Pro API.\n' +
       'You are running via API.\n' +
-      'Done!')
+      'Done!\n')
   })
 
   it('yaml encoding works', function () {
@@ -41,6 +41,11 @@ describe('stripping', function () {
     assert.strictEqual(strip33, expectedStrip33)
     const strip3213 = tools.stripping.stripMarkdown(mineflayer3213, { replacements })
     assert.strictEqual(strip3213, expectedStrip3213)
+
+    const [block] = tools.extractCodeblockFromMarkdown(mineflayer3213)
+    assert.strictEqual(block.lang, 'js')
+    assert.strictEqual(block.raw.length, 867)
+    assert.strictEqual(block.code.length, 858)
   })
 })
 

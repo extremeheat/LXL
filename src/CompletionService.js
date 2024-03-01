@@ -35,14 +35,20 @@ class CompletionService {
 
   async _requestCompletionOpenAI (model, system, user) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
-    const result = await openai.generateCompletion(model, system, user, { apiKey: this.openaiApiKey })
-    return { text: result.message.content }
+    const guidance = system?.guidanceText || user?.guidanceText || ''
+    const result = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
+      apiKey: this.openaiApiKey,
+      guidanceMessage: guidance
+    })
+    return { text: guidance + result.message.content }
   }
 
   async _requestCompletionGemini (model, system, user) {
     if (!this.geminiApiKey) throw new Error('Gemini API key not set')
-    const result = await gemini.generateCompletion(model, this.geminiApiKey, system, user)
-    return { text: result.text() }
+    const guidance = system?.guidanceText || user?.guidanceText || ''
+    const mergedPrompt = [system, user].join('\n')
+    const result = await gemini.generateCompletion(model, this.geminiApiKey, mergedPrompt)
+    return { text: guidance + result.text() }
   }
 
   async requestCompletion (model, system, user) {

@@ -1,8 +1,16 @@
 // @ts-check
-const { CompletionService, ChatSession, Func: { Arg, Desc } } = require('langxlang')
+const { CompletionService, ChatSession, Func: { Arg, Desc }, loadPrompt } = require('langxlang')
 const fs = require('fs')
 const openAIKey = fs.readFileSync('openai.key', 'utf8')
 const geminiKey = fs.readFileSync('gemini.key', 'utf8')
+const guidanceStr = `Please convert this YAML to JSON:
+\`\`\`yaml
+name: AI
+age: 30
+\`\`\`
+%%%$GUIDANCE_START$%%%
+\`\`\`json
+`
 
 console.log('OpenAI key', openAIKey)
 
@@ -25,6 +33,17 @@ async function testGeminiCompletion () {
   console.log(result)
 }
 
+async function testGuidance () {
+  console.log('Guidance:', guidanceStr)
+  const q = loadPrompt(guidanceStr, {})
+  const result = await completionService.requestCompletion('gpt-3.5-turbo', '', q)
+  console.log('GPT-3.5 result for', q)
+  console.log(result)
+  const result2 = await completionService.requestCompletion('gemini-1.0-pro', '', q)
+  console.log('Gemini result for', q)
+  console.log(result2)
+}
+
 function toTerminal (chunk) {
   process.stdout.write(chunk.content)
 }
@@ -42,6 +61,15 @@ async function testSession () {
   const followup = await session.sendMessage(q2, toTerminal)
   process.stdout.write('\n')
   console.log('Done', followup.length, 'bytes')
+}
+
+async function testSessionWithGuidance () {
+  const session = new ChatSession(completionService, 'gpt-3.5-turbo', '')
+  const q = guidanceStr
+  console.log('> ', q)
+  const message = await session.sendMessage(loadPrompt(q, {}), toTerminal)
+  process.stdout.write('\n')
+  console.log('Done', message)
 }
 
 function getWeather (
@@ -91,6 +119,8 @@ async function testGeminiSessionWithFuncs () {
 async function testBasic () {
   await testOpenAICompletion()
   await testGeminiCompletion()
+  await testGuidance()
+  await testSessionWithGuidance()
   await testSession()
   await testOpenAISessionWithFuncs()
   await testGeminiSessionWithFuncs()

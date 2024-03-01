@@ -16,9 +16,11 @@ class GoogleAIStudioCompletionService {
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
+    const guidance = system?.guidanceText || user?.guidanceText || ''
+    if (guidance) chunkCb?.({ done: false, delta: guidance })
     const mergedPrompt = [system, user].join('\n')
     const result = await studio.generateCompletion(model, mergedPrompt, chunkCb)
-    return { text: result.text }
+    return { text: guidance + result.text }
   }
 
   async requestStreamingChat (model, { messages, maxTokens, functions }, chunkCb) {

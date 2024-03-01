@@ -2,7 +2,7 @@ const codebase = require('./tools/codebase')
 const viz = require('./tools/viz')
 const yaml = require('./tools/yaml')
 const stripping = require('./tools/stripping')
-const { importPromptSync, importPrompt, loadPrompt, preMarkdown } = require('./tools/mdp')
+const { importPromptRaw, importPromptSync, importPrompt, loadPrompt, preMarkdown } = require('./tools/mdp')
 
 function createTypeWriterEffectStream (to = process.stdout) {
   // Instead of writing everything at once, we want a typewriter effect
@@ -26,6 +26,20 @@ function createTypeWriterEffectStream (to = process.stdout) {
   }
 }
 
+function extractCodeblockFromMarkdown (md) {
+  const tokens = stripping.tokenizeMarkdown(stripping.normalizeLineEndings(md), {})
+  return tokens.reduce((acc, token) => {
+    if (token[1] === 'code') {
+      acc.push({
+        raw: token[0],
+        lang: token[2],
+        code: token[3]
+      })
+    }
+    return acc
+  }, [])
+}
+
 module.exports = {
   makeVizForPrompt: viz.makeVizForPrompt,
   stripping,
@@ -33,8 +47,10 @@ module.exports = {
   collectGithubRepoFiles: codebase.collectGithubRepoFiles,
   concatFilesToMarkdown: codebase.concatFilesToMarkdown,
   createTypeWriterEffectStream,
+  extractCodeblockFromMarkdown,
   preMarkdown,
   loadPrompt,
+  importPromptRaw,
   importPromptSync,
   importPrompt,
   encodeYAML: yaml.encodeYaml
