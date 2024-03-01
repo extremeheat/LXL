@@ -4,6 +4,14 @@ const getCaller = require('caller')
 
 // See doc/MarkdownPreprocessing.md for more information
 
+class PromptString extends String {
+  constructor (str, basePrompt, guidanceText) {
+    super(str)
+    this.basePrompt = basePrompt
+    this.guidanceText = guidanceText
+  }
+}
+
 function preMarkdown (text, vars = {}) {
   // Notes:
   // %%%()%%% refers to variable insertion
@@ -195,7 +203,16 @@ function preMarkdown (text, vars = {}) {
 }
 
 function loadPrompt (text, vars) {
-  return preMarkdown(text.replaceAll('\r\n', '\n'), vars).trim()
+  const str = preMarkdown(text.replaceAll('\r\n', '\n'), vars).trim()
+  const TOKEN_GUIDANCE_START = '%%%$GUIDANCE_START$%%%'
+  const guidanceText = str.indexOf(TOKEN_GUIDANCE_START)
+  if (guidanceText !== -1) {
+    const [basePrompt, guidanceText] = str.split(TOKEN_GUIDANCE_START)
+    const newStr = str.replace(TOKEN_GUIDANCE_START, '')
+    return new PromptString(newStr, basePrompt, guidanceText)
+  } else {
+    return new PromptString(str)
+  }
 }
 
 function readSync (path, caller) {

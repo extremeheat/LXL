@@ -1,10 +1,9 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 const debug = require('debug')('lxl')
 
-async function generateCompletion (model, apiKey, system, user) {
+async function generateCompletion (model, apiKey, prompt) {
   const google = new GoogleGenerativeAI(apiKey)
   const generator = google.getGenerativeModel({ model })
-  const prompt = system + '\n' + user
   const result = await generator.generateContent(prompt)
   const response = await result.response
   return response

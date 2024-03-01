@@ -4,11 +4,11 @@ const debug = require('debug')('lxl')
 
 async function generateCompletion (model, system, user, options = {}) {
   const openai = new OpenAI(options)
+  const messages = [{ role: 'user', content: user }]
+  if (system) messages.unshift({ role: 'system', content: system })
+  if (options.guidanceMessage) messages.push({ role: 'assistant', content: options.guidanceMessage })
   const completion = await openai.chat.completions.create({
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: user }
-    ],
+    messages,
     model
   })
   const choice = completion.choices[0]
