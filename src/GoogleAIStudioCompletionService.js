@@ -2,6 +2,11 @@ const studio = require('./googleAIStudio')
 
 const supportedModels = ['gemini-1.0-pro', 'gemini-1.5-pro']
 
+function checkContainsStopTokenLine (message, token) {
+  const lines = message.split('\n')
+  return lines.some((line) => line === token)
+}
+
 class GoogleAIStudioCompletionService {
   constructor (serverPort) {
     this.serverPort = serverPort
@@ -12,7 +17,7 @@ class GoogleAIStudioCompletionService {
     studio.stopServer()
   }
 
-  async requestCompletion (model, system, user, chunkCb) {
+  async requestCompletion (model, system, user, chunkCb, options) {
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
@@ -22,7 +27,33 @@ class GoogleAIStudioCompletionService {
     const messages = [{ role: 'user', content: mergedPrompt }]
     if (guidance) messages.push({ role: 'model', content: guidance })
     const result = await studio.generateCompletion(model, messages, chunkCb)
-    return { text: guidance + result.text }
+    let combinedResult = result.text
+    if (options.autoFeed) {
+      const until = options.autoFeed.stopLine
+      const maxRounds = options.autoFeed.maxRounds || 10
+      if (!until) throw new Error('Auto-feed requires a stop condition, missing `untilLineStartsWith`')
+      if (!checkContainsStopTokenLine(combinedResult)) {
+        // Check if the last message is a model message, if not, insert one
+        const lastMessage = messages[messages.length - 1]
+        if (lastMessage.role !== 'model') {
+          messages.push({ role: 'model', content: result.text })
+        } else {
+          // Append the result to the last model message
+          lastMessage.content += result.text
+        }
+        for (let i = 0; i < maxRounds; i++) {
+          const lastMessage = messages[messages.length - 1]
+          const now = await studio.generateCompletion(model, messages, chunkCb)
+          lastMessage.content += now.text
+          combinedResult += now.text
+          if (checkContainsStopTokenLine(now.text, until)) {
+            break
+          }
+        }
+      }
+    }
+    chunkCb?.({ done: true, delta: '\n' })
+    return { text: guidance + combinedResult }
   }
 
   async requestStreamingChat (model, { messages, maxTokens, functions }, chunkCb) {

@@ -23,7 +23,14 @@ declare module 'langxlang' {
     stop(): void
 
     // Request a non-streaming completion from the model.
-    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, chunkCb?: ChunkCb): Promise<{ text: string }>
+    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, chunkCb?: ChunkCb, options?: {
+      autoFeed?: {
+        // Once a line matching stopLine is hit, stop trying to feed the model more input
+        stopLine: string,
+        // The maximum number of rounds to feed the model
+        maxRounds: number,
+      }
+    }): Promise<{ text: string }>
   }
 
   interface Func {

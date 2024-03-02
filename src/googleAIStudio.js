@@ -79,7 +79,6 @@ async function generateCompletion (model, messages, chunkCb, options) {
   // If the user is using streaming, they won't face any delay getting the response
   throttle = await sleep(6000)
   isBusy = false
-  chunkCb?.({ done: true, delta: '\n' })
   return {
     text: response.text
   }
@@ -114,12 +113,10 @@ async function requestChatCompletion (model, messages, chunkCb, options) {
       const content = `<|ASSISTANT|>\n${message.content})`
       guidanceMessage = content
     } else if (message.role === 'user') {
-      // msg += `\n<|USER|>\n${message.content}`
       const content = `<|USER|>\n${message.content}`
       prefixedMessages.push({ role: 'user', content })
     } else if (message.role === 'function') {
       // TODO: log the function name also maybe?
-      // msg += `\n<|FUNCTION_OUTPUT|>\n${message.content})`
       const content = `<|FUNCTION_OUTPUT|>\n${message.content})`
       prefixedMessages.push({ role: 'user', content })
     }
