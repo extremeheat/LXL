@@ -18,8 +18,10 @@ class GoogleAIStudioCompletionService {
     }
     const guidance = system?.guidanceText || user?.guidanceText || ''
     if (guidance) chunkCb?.({ done: false, delta: guidance })
-    const mergedPrompt = [system, user].join('\n')
-    const result = await studio.generateCompletion(model, mergedPrompt, chunkCb)
+    const mergedPrompt = [system?.basePrompt || system, user?.basePrompt || user].join('\n')
+    const messages = [{ role: 'user', content: mergedPrompt }]
+    if (guidance) messages.push({ role: 'model', content: guidance })
+    const result = await studio.generateCompletion(model, messages, chunkCb)
     return { text: guidance + result.text }
   }
 
