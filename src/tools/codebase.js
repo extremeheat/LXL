@@ -27,6 +27,7 @@ function collectFolderFiles (folder, options) {
   // Now collect all the files inside repoPath, like `tree`: [absolute, relative]
   const allFiles = getAllFilesIn(folderFixed)
     .map(f => [f, f.replace(folderFixed, '')])
+  const excluding = options.excludingPrefixes || ['/node_modules', '/.git']
 
   // Now figure out the relevant files
   const relevantFiles = []
@@ -46,6 +47,9 @@ function collectFolderFiles (folder, options) {
       } else {
         throw new Error('options.matching must be a function or an array of regexes or strings')
       }
+    }
+    if (excluding.some(ex => relFile.startsWith(ex))) {
+      continue
     }
     relevantFiles.push([file, relFile])
   }

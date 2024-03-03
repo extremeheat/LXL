@@ -86,7 +86,10 @@ class CompletionService {
       tools: functions || undefined,
       tool_choice: functions ? 'auto' : undefined
     }, (chunk) => {
-      if (!chunk) return
+      if (!chunk) {
+        chunkCb?.({ done: true, delta: '' })
+        return
+      }
       const choice = chunk.choices[0]
       if (choice.finish_reason) {
         finishReason = choice.finish_reason
