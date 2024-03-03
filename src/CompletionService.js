@@ -76,12 +76,20 @@ class CompletionService {
     await openai.getStreamingCompletion(this.openaiApiKey, {
       model,
       max_tokens: maxTokens,
-      messages,
+      messages: messages.map((entry) => {
+        const msg = structuredClone(entry)
+        if (msg.role === 'model') msg.role = 'assistant'
+        if (msg.role === 'guidance') msg.role = 'assistant'
+        return msg
+      }),
       stream: true,
       tools: functions || undefined,
       tool_choice: functions ? 'auto' : undefined
     }, (chunk) => {
-      if (!chunk) return
+      if (!chunk) {
+        chunkCb?.({ done: true, delta: '' })
+        return
+      }
       const choice = chunk.choices[0]
       if (choice.finish_reason) {
         finishReason = choice.finish_reason
@@ -121,6 +129,7 @@ class CompletionService {
       const m = structuredClone(msg)
       if (msg.role === 'assistant') m.role = 'model'
       if (msg.role === 'system') m.role = 'user'
+      if (msg.role === 'guidance') m.role = 'model'
       if (msg.content) {
         delete m.content
         m.parts = [{ text: msg.content }]

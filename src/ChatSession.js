@@ -153,7 +153,7 @@ class ChatSession {
     this.messages.push({ role: 'user', content })
     let guidance
     if (message.guidanceText) {
-      guidance = { role: 'assistant', content: message.guidanceText }
+      guidance = { role: 'guidance', content: message.guidanceText }
       this.messages.push(guidance)
       chunkCb?.({ done: false, delta: message.guidanceText, content: message.guidanceText })
     }

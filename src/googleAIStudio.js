@@ -56,16 +56,16 @@ function stopServer () {
   serverPromise = null
 }
 
-async function generateCompletion (model, prompt, chunkCb, options) {
+async function generateCompletion (model, messages, chunkCb, options) {
   await runServer()
   await throttle
   if (isBusy) {
     throw new Error('Only one request at a time is supported with AI Studio, please wait for the previous request to finish')
   }
-  prompt = prompt.trim() + '\n'
   // console.log('Sending completion request to server', model, prompt)
   isBusy = true
-  serverConnection.emit('completionRequest', { model, prompt, stopSequences: options?.stopSequences })
+  const prompt = messages.map(m => m.content).join('\n')
+  serverConnection.emit('completionRequest', { model, prompt, messages, stopSequences: options?.stopSequences })
   function completionChunk (response) {
     chunkCb?.(response)
   }
@@ -77,9 +77,8 @@ async function generateCompletion (model, prompt, chunkCb, options) {
   serverConnection.off('completionChunk', completionChunk)
   // console.log('Done')
   // If the user is using streaming, they won't face any delay getting the response
-  throttle = await sleep(2000)
+  throttle = await sleep(6000)
   isBusy = false
-  chunkCb?.({ done: true, delta: '\n' })
   return {
     text: response.text
   }
@@ -90,33 +89,53 @@ const basePrompt = importPromptRaw('./googleAiStudioPrompt.txt')
 async function requestChatCompletion (model, messages, chunkCb, options) {
   const hasSystemMessage = messages.some(m => m.role === 'system')
   const stops = ['<|ASSISTANT|>', '<|USER|>', '<|SYSTEM|>', '<|FUNCTION_OUTPUT|>', '</FUNCTION_CALL>']
-  let msg = loadPrompt(basePrompt, {
+  const msg = loadPrompt(basePrompt, {
     HAS_PROMPT: hasSystemMessage,
     HAS_FUNCTIONS: !!options.functions,
     LIST_OF_FUNCTIONS: options.functions ? encodeYaml(options.functions) : ''
   })
+  const prefixedMessages = [{ role: 'user', content: msg }]
+  let guidanceMessage
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i]
     if (i === 0 && message.role === 'system' && message.content) {
-      msg += '\nYour prompt is as follows:\n'
-      msg += message.content
+      // Modify the first user message (which acts as system prompt)
+      const firstMessage = prefixedMessages[0]
+      firstMessage.content += '\nYour prompt is as follows:\n'
+      firstMessage.content += message.content
     } else if (message.role === 'system') {
       throw new Error('The first message must be a system message')
     }
     if (message.role === 'assistant' || message.role === 'model') {
-      msg += `\n<|ASSISTANT|>\n${message.content}`
+      const content = `<|ASSISTANT|>\n${message.content})`
+      prefixedMessages.push({ role: 'model', content })
+    } else if (message.role === 'guidance') {
+      const content = `<|ASSISTANT|>\n${message.content})`
+      guidanceMessage = content
     } else if (message.role === 'user') {
-      msg += `\n<|USER|>\n${message.content}`
+      const content = `<|USER|>\n${message.content}`
+      prefixedMessages.push({ role: 'user', content })
     } else if (message.role === 'function') {
       // TODO: log the function name also maybe?
-      msg += `\n<|FUNCTION_OUTPUT|>\n${message.content})`
+      const content = `<|FUNCTION_OUTPUT|>\n${message.content})`
+      prefixedMessages.push({ role: 'user', content })
     }
   }
-  msg += '\n<|ASSISTANT|>'
+  // We don't actually need all these roles, it just makes things more complicated for the LLM
+  // since it already has a way to distinguish between user and model messages.
+  // So let's just merge them into one user message, and only put in a model message
+  // at the end if the user is specifying some guidance fot the model's response.
+  const finalMessageStr = prefixedMessages.map(m => m.content).join('\n')
+  const finalMessages = [{ role: 'user', content: finalMessageStr }]
+  if (guidanceMessage) {
+    finalMessages.push({ role: 'model', content: guidanceMessage })
+  } else {
+    finalMessages[0].content += '\n<|ASSISTANT|>'
+  }
 
-  debug('Sending chat completion request to server', model, msg)
+  debug('Sending chat completion request to server', model, finalMessages)
 
-  const response = await generateCompletion(model, msg, chunkCb, {
+  const response = await generateCompletion(model, finalMessages, chunkCb, {
     ...options,
     stopSequences: stops.concat(options?.stopSequences || [])
   })

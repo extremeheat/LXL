@@ -22,7 +22,7 @@ function createTypeWriterEffectStream (to = process.stdout) {
       to.write('\n')
       clearInterval(interval)
     }
-    remainingToWrite += chunk.delta
+    remainingToWrite += chunk.content || chunk.delta
   }
 }
 
