@@ -1,7 +1,7 @@
 const fs = require('fs')
 const cp = require('child_process')
 const { join } = require('path')
-const { normalizeLineEndings } = require('./stripping')
+const { normalizeLineEndings, stripJava } = require('./stripping')
 
 function fixSeparator (path) {
   return path.replace(/\\/g, '/')
@@ -27,12 +27,14 @@ function collectFolderFiles (folder, options) {
   // Now collect all the files inside repoPath, like `tree`: [absolute, relative]
   const allFiles = getAllFilesIn(folderFixed)
     .map(f => [f, f.replace(folderFixed, '')])
-  const excluding = options.excludingPrefixes || ['/node_modules', '/.git']
+  const excluding = options.excluding || ['/node_modules', '/.git']
 
   // Now figure out the relevant files
   const relevantFiles = []
   for (const [file, relFile] of allFiles) {
-    if (extension && !file.endsWith(extension)) {
+    if (Array.isArray(extension) && !extension.some(ext => file.endsWith(ext))) {
+      continue
+    } else if (extension && !file.endsWith(extension)) {
       continue
     }
     if (options.matching) {
@@ -48,12 +50,23 @@ function collectFolderFiles (folder, options) {
         throw new Error('options.matching must be a function or an array of regexes or strings')
       }
     }
-    if (excluding.some(ex => relFile.startsWith(ex))) {
+    if (excluding.some(ex => (typeof ex === 'string') ? relFile.startsWith(ex) : relFile.match(ex))) {
       continue
     }
     relevantFiles.push([file, relFile])
   }
-  const fileContents = relevantFiles.map(([abs, rel]) => [abs, rel, fs.readFileSync(abs, 'utf8').trim()])
+
+  function readFile (abs) {
+    const ret = fs.readFileSync(abs, 'utf8').trim()
+    if (options.strip) {
+      if (abs.endsWith('.java')) {
+        return stripJava(ret, { stripComments: true, ...options.strip })
+      }
+    }
+    return ret
+  }
+
+  const fileContents = relevantFiles.map(([abs, rel]) => [abs, rel, readFile(abs)])
   return fileContents
 }
 

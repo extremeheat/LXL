@@ -55,14 +55,22 @@ declare module 'langxlang' {
     sendMessage(userMessage: string, chunkCallback: ChunkCb): Promise<string>
   }
 
+  type StripOptions = { 
+    stripEmailQuotes?: boolean,
+    replacements?: Map<string | RegExp, string>,
+    allowMalformed?: boolean
+  }
+
   interface CollectFolderOptions {
-    // What extension of files in the repo to include
-    extension?: string
+    // What extension/extension(s) of files in the repo to include
+    extension?: string | string[]
     // Either a function that returns true if the file should be included
     // or an array of regexes of which one needs to match for inclusion
     matching?: (fileName: string) => boolean | RegExp[]
     // An optional list of strings for which if the path starts with one of them, it's excluded, even if it was matched by `extension` or `matching`
-    excludingPrefixes?: string[]
+    excluding?: Array<string | RegExp>
+    // Try and cut down on the token size of the input by doing "stripping" to remove semantically unnecessary tokens from file
+    strip?: StripOptions
   }
 
   interface Tools {
@@ -94,11 +102,7 @@ declare module 'langxlang' {
     importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
     // Various string manipulation tools to minify/strip down strings
     stripping: {
-      stripMarkdown(input: string, options?: { 
-        stripEmailQuotes?: boolean,
-        replacements?: Map<string | RegExp, string>,
-        allowMalformed?: boolean
-      }): string
+      stripMarkdown(input: string, options?: StripOptions): string
     }
     // Extracts code blocks from markdown
     extractCodeblockFromMarkdown(markdownInput: string): { raw: string, lang: string, code: string }[]
