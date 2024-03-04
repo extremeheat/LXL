@@ -45,7 +45,9 @@ async function testGuidance () {
 }
 
 function toTerminal (chunk) {
-  process.stdout.write(chunk.content)
+  chunk.done
+    ? process.stdout.write('\n')
+    : process.stdout.write(chunk.content)
 }
 
 async function testSession () {
@@ -54,13 +56,13 @@ async function testSession () {
   console.log('> ', q)
   const message = await session.sendMessage(q, toTerminal)
   process.stdout.write('\n')
-  console.log('Done', message.length, 'bytes', 'now asking a followup')
+  console.log('Done', message, 'bytes', 'now asking a followup')
   // ask related question about the response
   const q2 = 'Is this the case everywhere on Earth, what about the poles?'
   console.log('> ', q2)
   const followup = await session.sendMessage(q2, toTerminal)
   process.stdout.write('\n')
-  console.log('Done', followup.length, 'bytes')
+  console.log('Done', followup, 'bytes')
 }
 
 async function testSessionWithGuidance () {
@@ -116,6 +118,15 @@ async function testGeminiSessionWithFuncs () {
   console.log('\nDone')
 }
 
+async function testOpenAICaching () {
+  const q = 'Hello! Why is the sky blue?'
+  const result = await completionService.requestCompletion('gpt-3.5-turbo', '', 'Hello! Why is the sky blue?', null, {
+    enableCaching: true
+  })
+  console.log('Cached result for', q)
+  console.log(result)
+}
+
 async function testBasic () {
   await testOpenAICompletion()
   await testGeminiCompletion()
@@ -124,6 +135,7 @@ async function testBasic () {
   await testSession()
   await testOpenAISessionWithFuncs()
   await testGeminiSessionWithFuncs()
+  await testOpenAICaching()
 
   console.log('All Good!')
 }

@@ -25,6 +25,20 @@ async function testCompletion () {
   service.stop()
 }
 
+async function testCachedCompletion () {
+  const service = new GoogleAIStudioCompletionService(8095)
+  await service.ready
+
+  const q1 = 'Why is the sky blue?'
+  console.log('>', q1)
+  const result = await service.requestCompletion('gemini-1.5-pro', '', q1, pleasantWriter(), {
+    enableCaching: true
+  })
+  console.log('Cached Result 1', result)
+  // Should have an "obtainedOn" field
+  service.stop()
+}
+
 async function testCompletionChat () {
   const service = new GoogleAIStudioCompletionService(8095)
   await service.ready
@@ -124,6 +138,7 @@ async function main () {
   await testCompletionChat()
   await testChatSession()
   await testChatSessionWithFunctions()
+  await testCachedCompletion()
 }
 
 // repl()

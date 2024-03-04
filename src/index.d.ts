@@ -12,7 +12,10 @@ declare module 'langxlang' {
     cachePath: string
 
     // Request a non-streaming completion from the model.
-    requestCompletion(model: Model, systemPrompt: string, userPrompt: string): Promise<{ text: string }>
+    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?, options?: {
+      // If true, the response will be cached and returned from the cache if the same request is made again.
+      enableCaching?: boolean
+    }): Promise<{ text: string }>
   }
   class GoogleAIStudioCompletionService {
     // Creates an instance of GoogleAIStudioCompletionService. The port is the port that the server should listen on.
@@ -29,7 +32,9 @@ declare module 'langxlang' {
         stopLine: string,
         // The maximum number of rounds to feed the model
         maxRounds: number,
-      }
+      },
+      // If true, the response will be cached and returned from the cache if the same request is made again.
+      enableCaching?: boolean
     }): Promise<{ text: string }>
   }
 

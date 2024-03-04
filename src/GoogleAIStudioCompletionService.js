@@ -1,3 +1,4 @@
+const caching = require('./caching')
 const studio = require('./googleAIStudio')
 
 const supportedModels = ['gemini-1.0-pro', 'gemini-1.5-pro']
@@ -21,6 +22,22 @@ class GoogleAIStudioCompletionService {
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
+    if (options.enableCaching) {
+      const cachedResponse = await caching.getCachedResponse(model, [system, user])
+      if (cachedResponse) {
+        chunkCb?.({ done: false, delta: cachedResponse.text })
+        chunkCb?.({ done: true, delta: '' })
+        return cachedResponse
+      }
+    }
+
+    function saveIfCaching (response) {
+      if (response && response.text && options.enableCaching) {
+        caching.addResponseToCache(model, [system, user], response)
+      }
+      return response
+    }
+
     const guidance = system?.guidanceText || user?.guidanceText || ''
     if (guidance) chunkCb?.({ done: false, delta: guidance })
     const mergedPrompt = [system?.basePrompt || system, user?.basePrompt || user].join('\n')
@@ -53,7 +70,7 @@ class GoogleAIStudioCompletionService {
       }
     }
     chunkCb?.({ done: true, delta: '\n' })
-    return { text: guidance + combinedResult }
+    return saveIfCaching({ text: guidance + combinedResult })
   }
 
   async requestStreamingChat (model, { messages, maxTokens, functions }, chunkCb) {

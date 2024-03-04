@@ -2,28 +2,12 @@ const openai = require('./openai')
 const palm2 = require('./palm2')
 const gemini = require('./gemini')
 const { cleanMessage, getModelInfo, knownModels } = require('./util')
-
-const fs = require('fs')
-const { join } = require('path')
-const appDataDir = process.env.APPDATA ||
-  (process.platform === 'darwin' ? process.env.HOME + '/Library/Application Support' : process.env.HOME + '/.local/share')
-
-function loadLXLKeyCache () {
-  if (!appDataDir) return
-  const lxlFile = 'lxl-cache.json'
-  const lxlPath = join(appDataDir, lxlFile)
-  if (!fs.existsSync(lxlPath)) {
-    fs.writeFileSync(lxlPath, '{"keys": {}}')
-    // console.log(`Created LXL key cache in '${lxlPath}'. You can define API keys here with the structure:  {"keys": { openai: '...', gemini: '...', palm2: '...' }}`)
-  }
-  const lxl = JSON.parse(fs.readFileSync(lxlPath))
-  return { ...lxl, path: lxlPath }
-}
+const caching = require('./caching')
 
 class CompletionService {
   constructor (keys, options = {}) {
     if (!keys) {
-      const cache = loadLXLKeyCache()
+      const cache = caching.loadLXLKeyCache()
       keys = cache.keys
       this.cachePath = cache.path
     }
@@ -51,17 +35,34 @@ class CompletionService {
     return { text: guidance + result.text() }
   }
 
-  async requestCompletion (model, system, user) {
+  async requestCompletion (model, system, user, chunkCb, options = {}) {
     system = cleanMessage(system)
     user = cleanMessage(user)
+
+    if (options.enableCaching) {
+      const cachedResponse = await caching.getCachedResponse(model, [system, user])
+      if (cachedResponse) {
+        chunkCb?.({ done: false, content: cachedResponse.text })
+        chunkCb?.({ done: true, delta: '' })
+        return cachedResponse
+      }
+    }
+
+    function saveIfCaching (response) {
+      if (response && response.text && options.enableCaching) {
+        caching.addResponseToCache(model, [system, user], response)
+      }
+      return response
+    }
+
     const { family } = getModelInfo(model)
     switch (family) {
-      case 'openai': return this._requestCompletionOpenAI(model, system, user)
-      case 'gemini': return this._requestCompletionGemini(model, system, user)
+      case 'openai': return saveIfCaching(await this._requestCompletionOpenAI(model, system, user))
+      case 'gemini': return saveIfCaching(await this._requestCompletionGemini(model, system, user))
       case 'palm2': {
         if (!this.palm2ApiKey) throw new Error('PaLM2 API key not set')
         const result = await palm2.requestPalmCompletion(system + '\n' + user, this.palm2ApiKey, model)
-        return { text: result }
+        return saveIfCaching({ text: result })
       }
       default:
         throw new Error(`Model '${model}' not supported for completion, available models: ${knownModels.join(', ')}`)
@@ -172,4 +173,4 @@ class CompletionService {
   }
 }
 
-module.exports = { appDataDir, CompletionService }
+module.exports = { appDataDir: caching.appDataDir, CompletionService }

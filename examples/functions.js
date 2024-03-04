@@ -31,11 +31,17 @@ async function main () {
   })
   const q = 'What time is it right now?'
   console.log('User:', q)
-  await session.sendMessage(q, ({ content }) => { process.stdout.write(content) })
+  await session.sendMessage(q, toTerminal)
   const q2 = 'Can you add the sum of 493, 23, and 1?'
   console.log('\nUser:', q2)
-  await session.sendMessage(q2, ({ content }) => { process.stdout.write(content) })
+  await session.sendMessage(q2, toTerminal)
   // Should output 517
 }
 
 main()
+
+function toTerminal (chunk) {
+  chunk.done
+    ? process.stdout.write('\n')
+    : process.stdout.write(chunk.content)
+}
