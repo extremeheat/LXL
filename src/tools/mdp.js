@@ -18,42 +18,13 @@ function preMarkdown (text, vars = {}) {
   // %%%[...] if CONDITION%%% refers to conditional insertion
   // %%%[...] if CONDITION else [...]%%% refers to conditional insertion with an else clause
   // %%%IF CONDITION\n...\n%%%ELSE\n...\n%%%ENDIF refers to conditional insertion with an else clause
-
   const TOKEN_VAR_START = '%%%('
   const TOKEN_VAR_END = ')%%%'
   let tokens = []
-  // First, we split by tokens, and we handle do variable insertions first
   let temp = ''
-  for (let i = 0; i < text.length; i++) {
-    const slice = text.slice(i)
-    if (slice.startsWith(TOKEN_VAR_START)) {
-      tokens.push([temp, 'text'])
-      temp = ''
-      const end = slice.indexOf(TOKEN_VAR_END)
-      if (end === -1) {
-        throw new Error('Unmatched variable insertion token')
-      }
-      tokens.push([slice.slice(0, end + TOKEN_VAR_END.length), 'var'])
-      i += end + TOKEN_VAR_END.length - 1
-    } else {
-      temp += text[i]
-    }
-  }
-  tokens.push([temp, 'text'])
-  // Now, for each of the var tokens, we replace them with the appropriate value
-  for (let i = 0; i < tokens.length; i++) {
-    if (tokens[i][1] === 'var') {
-      const varName = tokens[i][0].slice(TOKEN_VAR_START.length, -TOKEN_VAR_END.length)
-      const replacement = vars[varName] || ''
-      tokens[i] = [replacement, 'text']
-    }
-  }
-  // Now recombine the tokens
-  let result = ''
-  for (let i = 0; i < tokens.length; i++) {
-    result += tokens[i][0]
-  }
-  // Now we handle conditional insertions
+  let result = text
+
+  // Handle conditional insertions first
   const TOKEN_COND_START = '%%%['
   tokens = []
   temp = ''
@@ -63,7 +34,11 @@ function preMarkdown (text, vars = {}) {
     if (slice.startsWith(TOKEN_COND_START)) {
       tokens.push([temp, 'text'])
       temp = ''
-      const end = slice.indexOf('%%%', TOKEN_COND_START.length)
+      // Prevent a conflict with variable insertion tokens
+      const end = slice
+        .replaceAll(TOKEN_VAR_START, ' '.repeat(TOKEN_VAR_START.length))
+        .replaceAll(TOKEN_VAR_END, ' '.repeat(TOKEN_VAR_END.length))
+        .indexOf('%%%', TOKEN_COND_START.length)
       if (end === -1) {
         throw new Error('Unmatched conditional insertion token')
       }
@@ -199,6 +174,39 @@ function preMarkdown (text, vars = {}) {
   }
   // Now recombine the tokens
   result = tokens.map(e => e[0]).join('\n')
+
+  // Now do variable replacements, we need to do this last as it's user-defined input that could otherwise interfere with above logic
+  tokens = []
+  temp = ''
+  for (let i = 0; i < result.length; i++) {
+    const slice = result.slice(i)
+    if (slice.startsWith(TOKEN_VAR_START)) {
+      tokens.push([temp, 'text'])
+      temp = ''
+      const end = slice.indexOf(TOKEN_VAR_END)
+      if (end === -1) {
+        throw new Error('Unmatched variable insertion token')
+      }
+      tokens.push([slice.slice(0, end + TOKEN_VAR_END.length), 'var'])
+      i += end + TOKEN_VAR_END.length - 1
+    } else {
+      temp += result[i]
+    }
+  }
+  tokens.push([temp, 'text'])
+  // Now, for each of the var tokens, we replace them with the appropriate value
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i][1] === 'var') {
+      const varName = tokens[i][0].slice(TOKEN_VAR_START.length, -TOKEN_VAR_END.length)
+      const replacement = vars[varName] || ''
+      tokens[i] = [replacement, 'text']
+    }
+  }
+  // Now recombine the tokens
+  result = ''
+  for (let i = 0; i < tokens.length; i++) {
+    result += tokens[i][0]
+  }
   return result
 }
 

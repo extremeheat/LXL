@@ -95,13 +95,23 @@ function concatFilesToMarkdown (files, options = {}) {
   ```js
   const a = 1
   // ...
-  ``` // note: have to replace ``` with ~~~ to avoid markdown issues
+  ```
   */
-  const acceptedExtensionsForMarkdown = ['js', 'jsx', 'ts', 'json', 'go', 'cpp', 'c', 'yaml', 'yml', 'java', 'php']
-  return files.map(([abs, rel, content]) => `${options.prefix ? options.prefix : (rel.startsWith('/') ? '' : '/')}${rel}:
-\`\`\`${options.noCodeblockType ? '' : (acceptedExtensionsForMarkdown.find(ext => abs.endsWith('.' + ext)) || '')}
-${normalizeLineEndings(content).replace('```', '~~~')}
-\`\`\``).join('\n')
+  const acceptedExtensionsForMarkdown = ['js', 'jsx', 'ts', 'json', 'go', 'cpp', 'c', 'yaml', 'yml', 'java', 'php', 'md']
+  let lines = ''
+  for (const [abs, rel, content] of files) {
+    lines += `${options.prefix ? options.prefix : (rel.startsWith('/') ? '' : '/')}${rel}:` + '\n'
+    // If the file contains backticks, we need to add more backticks to our wrapper for the code block to avoid markdown issues
+    let backTicks = '```'
+    while (content.includes(backTicks)) {
+      backTicks += '`'
+    }
+    const codeblockExt = options.noCodeblockType ? '' : (acceptedExtensionsForMarkdown.find(ext => abs.endsWith('.' + ext)) || '')
+    lines += `${backTicks}${codeblockExt}\n`
+    lines += normalizeLineEndings(content)
+    lines += `\n${backTicks}\n`
+  }
+  return lines
 }
 
 module.exports = { collectFolderFiles, collectGithubRepoFiles, concatFilesToMarkdown }
