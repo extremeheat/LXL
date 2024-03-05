@@ -1,6 +1,7 @@
 const fs = require('fs')
 const { join, dirname } = require('path')
 const getCaller = require('caller')
+const { normalizeLineEndings } = require('./stripping')
 
 // See doc/MarkdownPreprocessing.md for more information
 
@@ -165,15 +166,15 @@ function preMarkdown (text, vars = {}) {
       const { ifCondition, ifTrueBlock, falseBlock } = token[0]
       const condition = ifCondition.trim()
       if (vars[condition]) {
-        tokens[i] = ifTrueBlock.join('\n')
+        tokens[i] = ifTrueBlock.length ? ifTrueBlock.join('\n') : null
       } else {
-        tokens[i] = falseBlock.join('\n')
+        tokens[i] = falseBlock.length ? falseBlock.join('\n') : null
       }
       tokens[i] = [tokens[i], 'text']
     }
   }
   // Now recombine the tokens
-  result = tokens.map(e => e[0]).join('\n')
+  result = tokens.filter(token => token[0] != null).map(e => e[0]).join('\n')
 
   // Now do variable replacements, we need to do this last as it's user-defined input that could otherwise interfere with above logic
   tokens = []
@@ -210,13 +211,31 @@ function preMarkdown (text, vars = {}) {
   return result
 }
 
+// Wraps the contents by using the specified token character,
+// ensuring that the token is long enough that it's not present in the content
+function wrapContentWithSufficientTokens (content, token = '```', initialTokenSuffix = '') {
+  let backTicks = token
+  while (content.includes(backTicks)) {
+    backTicks += '`'
+  }
+  let lines = ''
+  const codeblockExt = initialTokenSuffix
+  lines += `${backTicks}${codeblockExt}\n`
+  lines += normalizeLineEndings(content)
+  lines += `\n${backTicks}\n`
+  return lines
+}
+
 function loadPrompt (text, vars) {
-  const str = preMarkdown(text.replaceAll('\r\n', '\n'), vars)
+  // Prevent user data from affecting the guidance token by using a intermediate random string
   const TOKEN_GUIDANCE_START = '%%%$GUIDANCE_START$%%%'
-  const guidanceText = str.indexOf(TOKEN_GUIDANCE_START)
+  const tokenGuidanceStart = `%%%$GUIDANCE_START${Math.random()}$%%%`
+  text = text.replaceAll(TOKEN_GUIDANCE_START, tokenGuidanceStart)
+  const str = preMarkdown(text.replaceAll('\r\n', '\n'), vars)
+  const guidanceText = str.indexOf(tokenGuidanceStart)
   if (guidanceText !== -1) {
-    const [basePrompt, guidanceText] = str.split(TOKEN_GUIDANCE_START)
-    const newStr = str.replace(TOKEN_GUIDANCE_START, '')
+    const [basePrompt, guidanceText] = str.split(tokenGuidanceStart)
+    const newStr = str.replace(tokenGuidanceStart, '')
     return new PromptString(newStr, basePrompt, guidanceText)
   } else {
     return new PromptString(str)
@@ -274,4 +293,4 @@ async function importPrompt (path, vars) {
   }
 }
 
-module.exports = { preMarkdown, loadPrompt, importPromptSync, importPrompt, importPromptRaw }
+module.exports = { preMarkdown, wrapContentWithSufficientTokens, loadPrompt, importPromptSync, importPrompt, importPromptRaw }

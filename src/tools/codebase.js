@@ -1,7 +1,8 @@
 const fs = require('fs')
 const cp = require('child_process')
 const { join } = require('path')
-const { normalizeLineEndings, stripJava } = require('./stripping')
+const { stripJava } = require('./stripping')
+const { wrapContentWithSufficientTokens } = require('./mdp')
 
 function fixSeparator (path) {
   return path.replace(/\\/g, '/')
@@ -102,14 +103,8 @@ function concatFilesToMarkdown (files, options = {}) {
   for (const [abs, rel, content] of files) {
     lines += `${options.prefix ? options.prefix : (rel.startsWith('/') ? '' : '/')}${rel}:` + '\n'
     // If the file contains backticks, we need to add more backticks to our wrapper for the code block to avoid markdown issues
-    let backTicks = '```'
-    while (content.includes(backTicks)) {
-      backTicks += '`'
-    }
     const codeblockExt = options.noCodeblockType ? '' : (acceptedExtensionsForMarkdown.find(ext => abs.endsWith('.' + ext)) || '')
-    lines += `${backTicks}${codeblockExt}\n`
-    lines += normalizeLineEndings(content)
-    lines += `\n${backTicks}\n`
+    lines += wrapContentWithSufficientTokens(content, '```', codeblockExt)
   }
   return lines
 }
