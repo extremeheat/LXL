@@ -211,18 +211,18 @@ function preMarkdown (text, vars = {}) {
   return result
 }
 
-// Wraps the contents by using the specified token character,
+// Wraps the contents by using the specified token character at least 3 times,
 // ensuring that the token is long enough that it's not present in the content
-function wrapContentWithSufficientTokens (content, token = '```', initialTokenSuffix = '') {
-  let backTicks = token
+function wrapContentWithSufficientTokens (content, token = '`', initialTokenSuffix = '') {
+  let backTicks = token.repeat(3)
   while (content.includes(backTicks)) {
-    backTicks += '`'
+    backTicks += token[0]
   }
   let lines = ''
   const codeblockExt = initialTokenSuffix
   lines += `${backTicks}${codeblockExt}\n`
   lines += normalizeLineEndings(content)
-  lines += `\n${backTicks}\n`
+  lines += `\n${backTicks}`
   return lines
 }
 

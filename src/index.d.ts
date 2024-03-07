@@ -111,6 +111,9 @@ declare module 'langxlang' {
     }
     // Extracts code blocks from markdown
     extractCodeblockFromMarkdown(markdownInput: string): { raw: string, lang: string, code: string }[]
+    // Wraps the contents by using the specified token character at least 3 times,
+    // ensuring that the token is long enough that it's not present in the content
+    wrapContent(content: string, withChar = '```', initialTokenSuffix = ''): string
   }
 
   const tools: Tools

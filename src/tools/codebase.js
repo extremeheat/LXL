@@ -104,7 +104,8 @@ function concatFilesToMarkdown (files, options = {}) {
     lines += `${options.prefix ? options.prefix : (rel.startsWith('/') ? '' : '/')}${rel}:` + '\n'
     // If the file contains backticks, we need to add more backticks to our wrapper for the code block to avoid markdown issues
     const codeblockExt = options.noCodeblockType ? '' : (acceptedExtensionsForMarkdown.find(ext => abs.endsWith('.' + ext)) || '')
-    lines += wrapContentWithSufficientTokens(content, '```', codeblockExt)
+    lines += wrapContentWithSufficientTokens(content, '`', codeblockExt)
+    lines += '\n'
   }
   return lines
 }
