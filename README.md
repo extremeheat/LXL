@@ -105,4 +105,7 @@ loadPrompt("Hello, may name is %%%(NAME)%%%", { NAME: "Omega" })
 * `importPromptSync(path: string, variables: Record<string, string>): string` - Load a prompt from a file with the given variables
 * `importPrompt(path: string, variables: Record<string, string>): Promise<string>` - Load a prompt from a file with the given variables, asynchronously returning a Promise
 
-For the full API, see the [TypeScript types](./src/index.d.ts).
+### More information
+
+For the full API, see the [TypeScript types](./src/index.d.ts). Not all methods are documented in README, the types are
+more exhaustive in terms of what's available.

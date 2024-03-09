@@ -74,6 +74,20 @@ function stripJava (code, options) {
         entry[0] = entry[0].replace(new RegExp('\\b' + forRemoval + ' ', 'g'), '')
       }
     }
+    if (options.removeAnnotations) {
+      if (entry[1] === 'code') {
+        // console.log('Removing annotations')
+        const lines = entry[0].split('\n')
+        const newLines = []
+        for (const line of lines) {
+          if (line.trim().startsWith('@')) {
+            continue
+          }
+          newLines.push(line)
+        }
+        entry[0] = newLines.join('\n')
+      }
+    }
   }
   // Now we can replace some user specified tokens with other tokens. Useful for renaming variables
   if (options.replacements) {

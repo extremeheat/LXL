@@ -12,7 +12,10 @@ declare module 'langxlang' {
     cachePath: string
 
     // Request a non-streaming completion from the model.
-    requestCompletion(model: Model, systemPrompt: string, userPrompt: string): Promise<{ text: string }>
+    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?, options?: {
+      // If true, the response will be cached and returned from the cache if the same request is made again.
+      enableCaching?: boolean
+    }): Promise<{ text: string }>
   }
   class GoogleAIStudioCompletionService {
     // Creates an instance of GoogleAIStudioCompletionService. The port is the port that the server should listen on.
@@ -29,7 +32,9 @@ declare module 'langxlang' {
         stopLine: string,
         // The maximum number of rounds to feed the model
         maxRounds: number,
-      }
+      },
+      // If true, the response will be cached and returned from the cache if the same request is made again.
+      enableCaching?: boolean
     }): Promise<{ text: string }>
   }
 
@@ -55,14 +60,22 @@ declare module 'langxlang' {
     sendMessage(userMessage: string, chunkCallback: ChunkCb): Promise<string>
   }
 
+  type StripOptions = { 
+    stripEmailQuotes?: boolean,
+    replacements?: Map<string | RegExp, string>,
+    allowMalformed?: boolean
+  }
+
   interface CollectFolderOptions {
-    // What extension of files in the repo to include
-    extension?: string
+    // What extension/extension(s) of files in the repo to include
+    extension?: string | string[]
     // Either a function that returns true if the file should be included
     // or an array of regexes of which one needs to match for inclusion
     matching?: (fileName: string) => boolean | RegExp[]
     // An optional list of strings for which if the path starts with one of them, it's excluded, even if it was matched by `extension` or `matching`
-    excludingPrefixes?: string[]
+    excluding?: Array<string | RegExp>
+    // Try and cut down on the token size of the input by doing "stripping" to remove semantically unnecessary tokens from file
+    strip?: StripOptions
   }
 
   interface Tools {
@@ -92,16 +105,21 @@ declare module 'langxlang' {
     // Loads a file from disk (from current script's relative path or absolute path) and
     // replaces variables and conditionals with data from `vars`
     importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
+    // Reads a file from disk and returns the raw contents
+    importPromptRaw(filePath: string): Promise<string>
     // Various string manipulation tools to minify/strip down strings
     stripping: {
-      stripMarkdown(input: string, options?: { 
-        stripEmailQuotes?: boolean,
-        replacements?: Map<string | RegExp, string>,
-        allowMalformed?: boolean
-      }): string
+      stripMarkdown(input: string, options?: StripOptions): string
+      // Normalize line endings to \n
+      normalizeLineEndings(str: string): string
+      // Remove unnecessary keywords from a string
+      stripJava(input: string, options?: StripOptions): string
     }
     // Extracts code blocks from markdown
     extractCodeblockFromMarkdown(markdownInput: string): { raw: string, lang: string, code: string }[]
+    // Wraps the contents by using the specified token character at least 3 times,
+    // ensuring that the token is long enough that it's not present in the content
+    wrapContent(content: string, withChar = '```', initialTokenSuffix = ''): string
   }
 
   const tools: Tools

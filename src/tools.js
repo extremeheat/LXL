@@ -2,7 +2,7 @@ const codebase = require('./tools/codebase')
 const viz = require('./tools/viz')
 const yaml = require('./tools/yaml')
 const stripping = require('./tools/stripping')
-const { importPromptRaw, importPromptSync, importPrompt, loadPrompt, preMarkdown } = require('./tools/mdp')
+const { wrapContentWithSufficientTokens, importPromptRaw, importPromptSync, importPrompt, loadPrompt, preMarkdown } = require('./tools/mdp')
 
 function createTypeWriterEffectStream (to = process.stdout) {
   // Instead of writing everything at once, we want a typewriter effect
@@ -48,6 +48,7 @@ module.exports = {
   concatFilesToMarkdown: codebase.concatFilesToMarkdown,
   createTypeWriterEffectStream,
   extractCodeblockFromMarkdown,
+  wrapContent: wrapContentWithSufficientTokens,
   preMarkdown,
   loadPrompt,
   importPromptRaw,
