@@ -25,6 +25,9 @@ function loadLXLKeyCache () {
 }
 
 async function loadResponseCache () {
+  if (!fs.existsSync(lxlResponsePath)) {
+    fs.writeFileSync(lxlResponsePath, '{}')
+  }
   return fs.promises.readFile(lxlResponsePath, 'utf-8').then(data => {
     responseCache = JSON.parse(data)
   })

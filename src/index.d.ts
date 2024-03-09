@@ -105,9 +105,15 @@ declare module 'langxlang' {
     // Loads a file from disk (from current script's relative path or absolute path) and
     // replaces variables and conditionals with data from `vars`
     importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
+    // Reads a file from disk and returns the raw contents
+    importPromptRaw(filePath: string): Promise<string>
     // Various string manipulation tools to minify/strip down strings
     stripping: {
       stripMarkdown(input: string, options?: StripOptions): string
+      // Normalize line endings to \n
+      normalizeLineEndings(str: string): string
+      // Remove unnecessary keywords from a string
+      stripJava(input: string, options?: StripOptions): string
     }
     // Extracts code blocks from markdown
     extractCodeblockFromMarkdown(markdownInput: string): { raw: string, lang: string, code: string }[]
