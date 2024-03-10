@@ -75,7 +75,7 @@ function readyHTTP ({ baseURL, apiKey }) {
       },
       body: JSON.stringify(request)
     }).then(res => res.json())
-    console.log('LXL: Got response from HTTP server', response)
+    debug('LXL: Got response from HTTP server', response)
     if (response.response) {
       serverConnection.emit('completionResponse', response.response)
     }
