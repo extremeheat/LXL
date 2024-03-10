@@ -15,7 +15,10 @@ class GoogleAIStudioCompletionService {
       this.ready = studio.runServer(this.serverPort)
     } else if (typeof serverPortOrEndpointData === 'object') {
       this.serverBase = serverPortOrEndpointData
+      if (!this.serverBase?.baseURL) throw new Error('Invalid configuration for HTTP server endpoint')
       this.ready = studio.readyHTTP(this.serverBase)
+    } else {
+      throw new Error('Invalid arguments')
     }
   }
 
