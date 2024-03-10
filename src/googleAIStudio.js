@@ -15,6 +15,7 @@ let serverConnection
 let serverPromise
 let wss
 
+let throttleTime = 6000
 let throttle, isBusy
 
 // 1. Run a local server that a local AI Studio client can connect to
@@ -81,6 +82,8 @@ function readyHTTP ({ baseURL, apiKey }) {
     }
   })
   serverPromise = Promise.resolve()
+  // Lower throttle time for HTTP requests
+  throttleTime = 1000
 }
 
 // This method generates a completion using a local AI Studio websocket server that clients can connect to
@@ -105,7 +108,7 @@ async function generateCompletion (model, messages, chunkCb, options) {
   serverConnection.off('completionChunk', completionChunk)
   // console.log('Done')
   // If the user is using streaming, they won't face any delay getting the response
-  throttle = await sleep(6000)
+  throttle = await sleep(throttleTime)
   isBusy = false
   return {
     text: response.text
