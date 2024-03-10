@@ -9,9 +9,14 @@ function checkContainsStopTokenLine (message, token) {
 }
 
 class GoogleAIStudioCompletionService {
-  constructor (serverPort) {
-    this.serverPort = serverPort
-    this.ready = studio.runServer(serverPort)
+  constructor (serverPortOrEndpointData = 8095) {
+    if (typeof serverPortOrEndpointData === 'number') {
+      this.serverPort = serverPortOrEndpointData
+      this.ready = studio.runServer(this.serverPort)
+    } else if (typeof serverPortOrEndpointData === 'object') {
+      this.serverBase = serverPortOrEndpointData
+      this.ready = studio.readyHTTP(this.serverBase)
+    }
   }
 
   stop () {

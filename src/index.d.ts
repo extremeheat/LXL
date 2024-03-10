@@ -18,8 +18,13 @@ declare module 'langxlang' {
     }): Promise<{ text: string }>
   }
   class GoogleAIStudioCompletionService {
-    // Creates an instance of GoogleAIStudioCompletionService. The port is the port that the server should listen on.
+    // Creates an instance of GoogleAIStudioCompletionService that hosts a WebSocket server at specified port.
+    // AIStudio clients can connect to that port to work with LXL.
+    // The port is the port that the server should listen on.
     constructor(port: number)
+    // Creates an instance that instead makes an HTTP request to a relay server, 
+    // that then forwards the request to an AIStudio client.
+    constructor({ baseURL: string, apiKey: string })
     // Promise that resolves when the server is ready to accept requests.
     ready: Promise<void>
     // Stop the server.
