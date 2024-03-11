@@ -30,6 +30,9 @@ async function loadResponseCache () {
   }
   return fs.promises.readFile(lxlResponsePath, 'utf-8').then(data => {
     responseCache = JSON.parse(data)
+  }).catch(() => {
+    fs.writeFileSync(lxlResponsePath, '{}')
+    responseCache = {}
   })
 }
 
