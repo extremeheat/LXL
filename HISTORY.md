@@ -1,3 +1,6 @@
+## 0.5.1
+* [GoogleAIStudio: add option to send requests to HTTP server relay (#18)](https://github.com/extremeheat/LXL/commit/afb1d1e2344072967bbe092660793a213be751b0) (thanks @extremeheat)
+
 ## 0.5.0
 * [Add support for response caching, updates and fixes to tools (#16)](https://github.com/extremeheat/LXL/commit/2f0653ddaef850a659f585e95ad0f279dcf51a24) (thanks @extremeheat)
 * [Add experimental autoFeed option to GoogleAIStudioCompleter, update tooling (#15)](https://github.com/extremeheat/LXL/commit/cb747114dbec6167fe5ac9021ea88ec2a049c001) (thanks @extremeheat)
