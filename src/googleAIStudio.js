@@ -5,13 +5,20 @@ const { once, EventEmitter } = require('events')
 const { importPromptRaw, loadPrompt } = require('./tools/mdp')
 const { sleep } = require('./util')
 
+// There are 2 ways to use the AI Studio server:
+// 1. Run a local server that a local AI Studio client can connect to
+// 2. Assume an already running HTTP web server can be used to send requests to
+// One will be picked, globally, by the first constructor call in GoogleAIStudioCompletionService
+
 // Create a websocket server that client can connect to
 let serverConnection
 let serverPromise
 let wss
 
+let throttleTime = 6000
 let throttle, isBusy
 
+// 1. Run a local server that a local AI Studio client can connect to
 function runServer (port = 8095) {
   if (serverPromise) return serverPromise
   serverConnection = new EventEmitter()
@@ -56,6 +63,30 @@ function stopServer () {
   serverPromise = null
 }
 
+// 2. Assume an already running HTTP web server can be used to send requests to (no streaming support)
+function readyHTTP ({ baseURL, apiKey }) {
+  if (serverConnection) return
+  serverConnection = new EventEmitter()
+  serverConnection.on('completionRequest', async (request) => {
+    const response = await fetch(baseURL + '/complete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + apiKey
+      },
+      body: JSON.stringify(request)
+    }).then(res => res.json())
+    debug('LXL: Got response from HTTP server', response)
+    if (response.response) {
+      serverConnection.emit('completionResponse', response.response)
+    }
+  })
+  serverPromise = Promise.resolve()
+  // Lower throttle time for HTTP requests
+  throttleTime = 1000
+}
+
+// This method generates a completion using a local AI Studio websocket server that clients can connect to
 async function generateCompletion (model, messages, chunkCb, options) {
   await runServer()
   await throttle
@@ -77,7 +108,7 @@ async function generateCompletion (model, messages, chunkCb, options) {
   serverConnection.off('completionChunk', completionChunk)
   // console.log('Done')
   // If the user is using streaming, they won't face any delay getting the response
-  throttle = await sleep(6000)
+  throttle = await sleep(throttleTime)
   isBusy = false
   return {
     text: response.text
@@ -163,4 +194,4 @@ async function requestChatCompletion (model, messages, chunkCb, options) {
   }
 }
 
-module.exports = { stopServer, runServer, generateCompletion, requestChatCompletion }
+module.exports = { stopServer, runServer, readyHTTP, generateCompletion, requestChatCompletion }
