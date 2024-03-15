@@ -92,6 +92,10 @@ declare module 'langxlang' {
     collectGithubRepoFiles(repo: string, options: CollectFolderOptions & {
       // The branch to use
       branch?: string,
+      // The URL to the repo, if it's not github.com
+      url?: string,
+      // The token to use for authentication, if the repo is private
+      token?: string,
     }): Promise<[absolutePath: string, relativePath: string, contents: string][]>
     // Takes output from collectFolderFiles or collectGithubRepoFiles and returns a markdown string from it
     concatFilesToMarkdown(files: [absolutePath: string, relativePath: string, contents: string][], options?: { 
