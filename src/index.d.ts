@@ -81,6 +81,11 @@ declare module 'langxlang' {
     excluding?: Array<string | RegExp>
     // Try and cut down on the token size of the input by doing "stripping" to remove semantically unnecessary tokens from file
     strip?: StripOptions
+    // Truncate large files to this many GPT-4 tokens
+    truncateLargeFiles?: number
+    // Include binary files in the output. Binary files (<90% ASCII chars) can't be represented as text typically,
+    // so default is to exclude them.
+    includeBinaryFiles?: boolean
   }
 
   interface Tools {
@@ -95,7 +100,7 @@ declare module 'langxlang' {
       // The URL to the repo, if it's not github.com
       url?: string,
       // The token to use for authentication, if the repo is private
-      token?: string,
+      token?: string
     }): Promise<[absolutePath: string, relativePath: string, contents: string][]>
     // Takes output from collectFolderFiles or collectGithubRepoFiles and returns a markdown string from it
     concatFilesToMarkdown(files: [absolutePath: string, relativePath: string, contents: string][], options?: { 
@@ -115,7 +120,7 @@ declare module 'langxlang' {
     // replaces variables and conditionals with data from `vars`
     importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
     // Reads a file from disk and returns the raw contents
-    importPromptRaw(filePath: string): Promise<string>
+    importRawSync(filePath: string): string
     // Various string manipulation tools to minify/strip down strings
     stripping: {
       stripMarkdown(input: string, options?: StripOptions): string
@@ -123,6 +128,8 @@ declare module 'langxlang' {
       normalizeLineEndings(str: string): string
       // Remove unnecessary keywords from a string
       stripJava(input: string, options?: StripOptions): string
+      // Removes files from git diff matching the options.excluding regexes
+      stripDiff(input: string, options?: { excluding: RegExp[] }): string
     }
     // Extracts code blocks from markdown
     extractCodeblockFromMarkdown(markdownInput: string): { raw: string, lang: string, code: string }[]

@@ -16,6 +16,7 @@ function createTypeWriterEffectStream (to = process.stdout) {
   }, 10)
 
   return function (chunk) {
+    // console.log('chunk', chunk)
     if (chunk.done) {
       // Immediately flush whatever is left
       to.write(remainingToWrite)
@@ -52,6 +53,7 @@ module.exports = {
   preMarkdown,
   loadPrompt,
   importPromptRaw,
+  importRawSync: importPromptRaw,
   importPromptSync,
   importPrompt,
   encodeYAML: yaml.encodeYaml
