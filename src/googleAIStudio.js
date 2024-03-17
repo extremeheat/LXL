@@ -42,6 +42,10 @@ function runServer (port = 8095) {
           serverConnection.emit('completionResponse', data.response)
         } else if (data.type === 'completionChunk') {
           serverConnection.emit('completionChunk', data.response)
+        } else if (data.type === 'error') {
+          serverConnection.emit('completionResponse', { error: data.message })
+        } else {
+          debug('LXL: Unknown message type', data.type)
         }
       })
       ws.on('close', function close () {

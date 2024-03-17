@@ -31,7 +31,6 @@
   },
   "homepage": "https://github.com/extremeheat/LXL#readme",
   "devDependencies": {
-    "gpt-tokenizer": "^2.1.2",
     "langxlang": "file:.",
     "mocha": "^10.0.0",
     "standard": "^17.0.0"
@@ -41,6 +40,7 @@
     "acorn": "^8.11.3",
     "caller": "^1.1.0",
     "debug": "^4.3.4",
+    "gpt-tokenizer": "^2.1.2",
     "openai": "^4.28.0",
     "ws": "^8.16.0"
   }
