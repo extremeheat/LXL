@@ -440,8 +440,8 @@ function tokenizeMarkdown (comment, options) {
       // writing, we need to check \n before closing block to make sure it's actually the end
       if (slice.startsWith('\n' + inCodeBlock)) {
         const code = tokenSoFar.slice(inCodeBlock.length + inCodeLang.length + 1) // +1 for the newline
-        tokens.push([tokenSoFar + inCodeBlock, 'code', inCodeLang, code])
-        i += inCodeBlock.length - 1
+        tokens.push([tokenSoFar + '\n' + inCodeBlock, 'code', inCodeLang, code + '\n'])
+        i += inCodeBlock.length
         inCodeBlock = false
         tokenSoFar = ''
       } else {
