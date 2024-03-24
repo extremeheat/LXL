@@ -42,6 +42,10 @@ function runServer (port = 8095) {
           serverConnection.emit('completionResponse', data.response)
         } else if (data.type === 'completionChunk') {
           serverConnection.emit('completionChunk', data.response)
+        } else if (data.type === 'error') {
+          serverConnection.emit('completionResponse', { error: data.message, data: data.data })
+        } else {
+          debug('LXL: Unknown message type', data.type)
         }
       })
       ws.on('close', function close () {
@@ -54,11 +58,13 @@ function runServer (port = 8095) {
 }
 
 function stopServer () {
+  if (wss) {
   // Close all client connections
-  for (const client of wss.clients) {
-    client.close()
+    for (const client of wss.clients) {
+      client.close()
+    }
+    wss.close()
   }
-  wss.close()
   serverConnection = null
   serverPromise = null
 }
@@ -103,7 +109,7 @@ async function generateCompletion (model, messages, chunkCb, options) {
   serverConnection.on('completionChunk', completionChunk)
   const [response] = await once(serverConnection, 'completionResponse')
   if (response.error) {
-    throw new Error(response.error)
+    throw new Error('Completion failed: ' + JSON.stringify(response))
   }
   serverConnection.off('completionChunk', completionChunk)
   // console.log('Done')
@@ -132,7 +138,7 @@ async function requestChatCompletion (model, messages, chunkCb, options) {
     if (i === 0 && message.role === 'system' && message.content) {
       // Modify the first user message (which acts as system prompt)
       const firstMessage = prefixedMessages[0]
-      firstMessage.content += '\nYour prompt is as follows:\n'
+      firstMessage.content += '\nYour prompt is:\n'
       firstMessage.content += message.content
     } else if (message.role === 'system') {
       throw new Error('The first message must be a system message')

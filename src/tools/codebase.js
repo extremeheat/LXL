@@ -1,8 +1,10 @@
 const fs = require('fs')
 const cp = require('child_process')
+const { isAscii, isUtf8 } = require('buffer')
 const { join } = require('path')
 const { stripJava } = require('./stripping')
 const { wrapContentWithSufficientTokens } = require('./mdp')
+const gpt4 = require('gpt-tokenizer/cjs/model/gpt-4')
 
 function fixSeparator (path) {
   return path.replace(/\\/g, '/')
@@ -28,7 +30,7 @@ function collectFolderFiles (folder, options) {
   // Now collect all the files inside repoPath, like `tree`: [absolute, relative]
   const allFiles = getAllFilesIn(folderFixed)
     .map(f => [f, f.replace(folderFixed, '')])
-  const excluding = options.excluding || ['/node_modules', '/.git']
+  const excluding = options.excluding || ['/node_modules', '/.git', /\/build\//, /\/dist\//]
 
   // Now figure out the relevant files
   const relevantFiles = []
@@ -58,16 +60,30 @@ function collectFolderFiles (folder, options) {
   }
 
   function readFile (abs) {
-    const ret = fs.readFileSync(abs, 'utf8').trim()
-    if (options.strip) {
-      if (abs.endsWith('.java')) {
-        return stripJava(ret, { stripComments: true, ...options.strip })
+    let truncated = false
+    const data = fs.readFileSync(abs)
+    if (!options.includeBinaryFiles) {
+      if (!isAscii(data) && !isUtf8(data)) {
+        return ['(binary file)', { truncated: false, binary: true }]
       }
     }
-    return ret
+    let contents = data.toString('utf-8')
+    if (options.strip) {
+      if (abs.endsWith('.java')) {
+        contents = stripJava(contents, { stripComments: true, ...options.strip })
+      }
+    }
+    if (options.truncateLargeFiles) {
+      const maxTokens = options.truncateLargeFiles
+      if (!gpt4.isWithinTokenLimit(contents, maxTokens)) {
+        contents = gpt4.decode(gpt4.encode(contents).slice(0, maxTokens))
+        truncated = true
+      }
+    }
+    return [contents, { truncated }]
   }
 
-  const fileContents = relevantFiles.map(([abs, rel]) => [abs, rel, readFile(abs)])
+  const fileContents = relevantFiles.map(([abs, rel]) => [abs, rel, ...readFile(abs)])
   return fileContents
 }
 
@@ -80,7 +96,8 @@ function collectGithubRepoFiles (repo, options) {
   const repoPath = join(reposDir, safeName)
   fs.mkdirSync(reposDir, { recursive: true })
   if (!fs.existsSync(repoPath)) {
-    cp.execSync(`git clone https://github.com/${repo}.git ${safeName}`, { cwd: reposDir })
+    const url = options.url || `https://${options.token ? options.token + '@' : ''}github.com/${repo}.git`
+    cp.execSync(`git clone ${url} ${safeName}`, { cwd: reposDir })
   }
   // Git pull origin/$branch
   cp.execSync(`git pull origin ${branch}`, { cwd: repoPath })
@@ -98,10 +115,16 @@ function concatFilesToMarkdown (files, options = {}) {
   // ...
   ```
   */
-  const acceptedExtensionsForMarkdown = ['js', 'jsx', 'ts', 'json', 'go', 'cpp', 'c', 'yaml', 'yml', 'java', 'php', 'md']
+  const acceptedExtensionsForMarkdown = ['js', 'jsx', 'ts', 'json', 'go', 'cpp', 'c', 'cpp', 'cxx', 'h', 'hpp', 'yaml', 'yml', 'java', 'php', 'md']
   let lines = ''
-  for (const [abs, rel, content] of files) {
-    lines += `${options.prefix ? options.prefix : (rel.startsWith('/') ? '' : '/')}${rel}:` + '\n'
+  for (const [abs, rel, content, meta] of files) {
+    lines += `${options.prefix ? options.prefix : (rel.startsWith('/') ? '' : '/')}${rel}`
+    if (meta.truncated) lines += ' (truncated for size)'
+    lines += ':\n'
+    if (meta.binary) {
+      lines += '(a binary file)\n'
+      continue
+    }
     // If the file contains backticks, we need to add more backticks to our wrapper for the code block to avoid markdown issues
     const codeblockExt = options.noCodeblockType ? '' : (acceptedExtensionsForMarkdown.find(ext => abs.endsWith('.' + ext)) || '')
     lines += wrapContentWithSufficientTokens(content, '`', codeblockExt)

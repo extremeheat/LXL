@@ -435,10 +435,13 @@ function tokenizeMarkdown (comment, options) {
     const currentChar = comment[i]
     const slice = comment.slice(i)
     if (inCodeBlock) {
-      if (slice.startsWith(inCodeBlock)) {
+      // TODO: Check markdown spec -- does \n have to proceed the code block end?
+      // Because LLMs can't backtrack to escape a codeblock with more backticks after it's started
+      // writing, we need to check \n before closing block to make sure it's actually the end
+      if (slice.startsWith('\n' + inCodeBlock)) {
         const code = tokenSoFar.slice(inCodeBlock.length + inCodeLang.length + 1) // +1 for the newline
-        tokens.push([tokenSoFar + inCodeBlock, 'code', inCodeLang, code])
-        i += inCodeBlock.length - 1
+        tokens.push([tokenSoFar + '\n' + inCodeBlock, 'code', inCodeLang, code + '\n'])
+        i += inCodeBlock.length
         inCodeBlock = false
         tokenSoFar = ''
       } else {
@@ -513,4 +516,29 @@ function stripMarkdown (comment, options = {}) {
   return result.trim()
 }
 
-module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, removeNonAscii, normalizeLineEndings, tokenizeMarkdown }
+const DEFAULT_EXCLUDE = [/node_modules/, /\.git/, /\/build\//, /\/dist\//]
+
+function stripDiff (diff, options = {}) {
+  const exclude = options.exclude || DEFAULT_EXCLUDE
+  const lines = diff.split('\n')
+  const result = []
+  let inExcluded = false
+  for (const line of lines) {
+    if (line.startsWith('diff --git')) {
+      inExcluded = exclude.some((ex) => ex.test(line))
+      if (inExcluded) {
+        // Treat this as a binary file
+        result.push(line)
+        result.push('index 0000000..0000000')
+        result.push('Binary files differ')
+      }
+    }
+    if (inExcluded) {
+      continue
+    }
+    result.push(line)
+  }
+  return result.join('\n')
+}
+
+module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, stripDiff, removeNonAscii, normalizeLineEndings, tokenizeMarkdown }
