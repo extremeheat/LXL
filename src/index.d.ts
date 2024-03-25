@@ -1,6 +1,9 @@
 declare module 'langxlang' {
-  type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro'
+  type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro'
   type ChunkCb = ({ content: string }) => void
+
+  type CompletionResponse = { text: string }
+
   class CompletionService {
     // Creates an instance of completion service.
     // Note: as an alternative to explicitly passing the API keys in the constructor you can: 
@@ -15,7 +18,7 @@ declare module 'langxlang' {
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?, options?: {
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
-    }): Promise<{ text: string }>
+    }): Promise<CompletionResponse>
   }
   class GoogleAIStudioCompletionService {
     // Creates an instance of GoogleAIStudioCompletionService that hosts a WebSocket server at specified port.
@@ -40,7 +43,7 @@ declare module 'langxlang' {
       },
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
-    }): Promise<{ text: string }>
+    }): Promise<CompletionResponse>
   }
 
   interface Func {
@@ -65,7 +68,7 @@ declare module 'langxlang' {
     sendMessage(userMessage: string, chunkCallback: ChunkCb): Promise<string>
   }
 
-  type StripOptions = { 
+  type StripOptions = {
     stripEmailQuotes?: boolean,
     replacements?: Map<string | RegExp, string>,
     allowMalformed?: boolean
@@ -103,9 +106,9 @@ declare module 'langxlang' {
       token?: string
     }): Promise<[absolutePath: string, relativePath: string, contents: string][]>
     // Takes output from collectFolderFiles or collectGithubRepoFiles and returns a markdown string from it
-    concatFilesToMarkdown(files: [absolutePath: string, relativePath: string, contents: string][], options?: { 
+    concatFilesToMarkdown(files: [absolutePath: string, relativePath: string, contents: string][], options?: {
       // Disable if markdown code blocks should have a language tag (e.g. ```python)
-      noCodeblockType: bool 
+      noCodeblockType: bool
     }): string
     // Returns a function that can be passed to chunkCb in ChatSession.sendMessage, but with
     // a type writer effect. This can be helpful for GoogleAIStudioCompletionService, as it
@@ -149,4 +152,31 @@ declare module 'langxlang' {
   // Loads a file from disk (from current script's relative path or absolute path) and
   // replaces variables and conditionals with data from `vars`
   function importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
+
+  // Flow is a class that can be used to create a chain of prompts and response handling.
+  // You can also ask follow up questions somewhere along the chain, and Flow will stop
+  // executing the chain and wait for the follow up to be answered.
+  // This is different from ChatSession, which is for back and forth conversation, and
+  // intended for more advanced uses where you want to change the dialogue between a session.
+  class Flow {
+    constructor(completionService: CompletionService, chain: RootFlowChain, options)
+    run(parameters?: Record<string, any>): Promise<FlowRun>
+    followUp(priorRun: FlowRun, name: string, parameters?: Record<string, any>): Promise<FlowRun>
+  }
 }
+
+// FLOW
+interface FlowChainObjectBase {
+  prompt: string
+  with: Record<String, string>
+  followUps: Record<string, (resp: CompletionResponse, input: object) => FlowChainObject | FlowChainObjectOneOf>
+}
+interface FlowChainObject extends FlowChainObjectBase {
+  then: (response: CompletionResponse) => FlowChainObject | FlowChainObjectOneOf
+}
+interface FlowChainObjectOneOf extends FlowChainObjectBase {
+  thenOneOf: (response: CompletionResponse) => Record<string, FlowChainObject | FlowChainObjectOneOf>
+  discriminator: (response: CompletionResponse) => string
+}
+type RootFlowChain = (parameters: Record<string, any>) => FlowChainObject | FlowChainObjectOneOf
+type FlowRun = { response: CompletionResponse, flow: FlowChainObject | FlowChainObjectOneOf }
