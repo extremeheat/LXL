@@ -163,6 +163,8 @@ declare module 'langxlang' {
     // The responses for the last time the flow was run. Helpful for recovering from errors.
     lastResponses: CompletionResponse[]
     lastFlow: SomeFlowChainObject
+    lastRunParameters: Record<string, any>
+
     constructor(completionService: CompletionService, chain: RootFlowChain, options)
     run(parameters?: Record<string, any>): Promise<FlowRun>
     followUp(priorRun: FlowRun, name: string, parameters?: Record<string, any>): Promise<FlowRun>
@@ -174,19 +176,22 @@ interface FlowChainObjectBase {
   prompt: string
   with: Record<string, string>
   followUps: Record<string, (resp: CompletionResponse, input: object) => SomeFlowChainObject>
+  // The function that transforms the response from the model before it's passed to the followUps/next or returned
+  transformResponse: (response: CompletionResponse) => object
 }
 interface FlowChainObject extends FlowChainObjectBase {
-  then: (response: CompletionResponse) => SomeFlowChainObject
+  next: (response: CompletionResponse) => SomeFlowChainObject
 }
 interface FlowChainObjectOneOf extends FlowChainObjectBase {
-  thenOneOf: (response: CompletionResponse) => Record<string, SomeFlowChainObject>
+  nextOneOf: (response: CompletionResponse) => Record<string, SomeFlowChainObject>
   discriminator: (response: CompletionResponse) => string
 }
 type SomeFlowChainObject = FlowChainObject | FlowChainObjectOneOf
 type RootFlowChain = (parameters: Record<string, any>) => SomeFlowChainObject
-type FlowRun = { 
+type FlowRunResponse = CompletionResponse & { name?: string }
+type FlowRun = {
   // The final response from the flow
-  response: CompletionResponse,
+  response: FlowRunResponse,
   // The responses from each step in the flow
-  responses: CompletionResponse[]
+  responses: FlowRunResponse[]
 }

@@ -43,6 +43,7 @@ class Flow {
       resp = await this.service.requestCompletion(model, systemPrompt, userPrompt, this.chunkCb, this.generationOpts)
     }
     resp.inputHash = inputHash
+    resp.name = details.name
 
     if (details.outputType && details.outputType.codeblock) {
       const supportedTypes = ['yaml', 'json']
@@ -67,6 +68,11 @@ class Flow {
       prompt: promptFile,
       systemPrompt
     }
+
+    if (details.transformResponse) {
+      resp = await details.transformResponse(resp)
+    }
+
     if (runFollowUp && details.followUps[runFollowUp.name]) {
       const f = await details.followUps[runFollowUp.name](resp, runFollowUp.input)
       return await this._run(f, nextInherited, null, responses)
@@ -79,13 +85,14 @@ class Flow {
   }
 
   async run (initialParameters = {}) {
+    this.lastRunParameters = initialParameters
     const responses = []
     const chain = await this.rootFlow(initialParameters)
     await this._run(chain, {}, null, responses)
     return { response: responses[responses.length - 1], responses, initialParameters }
   }
 
-  async followUp (priorRun, name, input) {
+  async followUp (priorRun = { responses: [] }, name, input) {
     const responses = []
     const chain = await this.rootFlow(priorRun.initialParameters)
     const pastResponses = priorRun.responses.reduce((acc, r) => {
