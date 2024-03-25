@@ -1,8 +1,8 @@
+type CompletionResponse = { text: string }
+
 declare module 'langxlang' {
   type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro'
   type ChunkCb = ({ content: string }) => void
-
-  type CompletionResponse = { text: string }
 
   class CompletionService {
     // Creates an instance of completion service.
@@ -20,6 +20,7 @@ declare module 'langxlang' {
       enableCaching?: boolean
     }): Promise<CompletionResponse>
   }
+
   class GoogleAIStudioCompletionService {
     // Creates an instance of GoogleAIStudioCompletionService that hosts a WebSocket server at specified port.
     // AIStudio clients can connect to that port to work with LXL.
@@ -27,7 +28,7 @@ declare module 'langxlang' {
     constructor(port: number)
     // Creates an instance that instead makes an HTTP request to a relay server, 
     // that then forwards the request to an AIStudio client.
-    constructor({ baseURL: string, apiKey: string })
+    constructor(args: { baseURL: string, apiKey: string })
     // Promise that resolves when the server is ready to accept requests.
     ready: Promise<void>
     // Stop the server.
@@ -46,6 +47,8 @@ declare module 'langxlang' {
     }): Promise<CompletionResponse>
   }
 
+  type SomeCompletionService = CompletionService | GoogleAIStudioCompletionService
+
   interface Func {
     // If default is not provided, the argument is required.
     Arg(options: { type: string[], description: string, example?: string, default?: any, required?: boolean }): string
@@ -54,18 +57,16 @@ declare module 'langxlang' {
     Desc(description: string): void
   }
 
-  type FuncArg = ReturnType<typeof Arg>
-  interface Functions {
-    // The functions that can be used in the user prompt.
-    [key: string]: (...args: FuncArg) => any
-  }
+  // The functions that can be used in the user prompt.
+  type Functions<T extends any[]> = Record<string, (...args: T) => void>
 
-  class ChatSession {
+  class ChatSession<T extends any[]> {
     // ChatSession is for back and forth conversation between a user an an LLM.
-    constructor(completionService: CompletionService, model: Model, systemPrompt: string, options?: { functions?: Functions })
+    constructor(completionService: SomeCompletionService, model: Model, systemPrompt?: string)
+    constructor(completionService: SomeCompletionService, model: Model, systemPrompt?: string, options?: { functions?: Functions<T> })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
-    sendMessage(userMessage: string, chunkCallback: ChunkCb): Promise<string>
+    sendMessage(userMessage: string, chunkCallback?: ChunkCb): Promise<string>
   }
 
   type StripOptions = {
@@ -108,7 +109,7 @@ declare module 'langxlang' {
     // Takes output from collectFolderFiles or collectGithubRepoFiles and returns a markdown string from it
     concatFilesToMarkdown(files: [absolutePath: string, relativePath: string, contents: string][], options?: {
       // Disable if markdown code blocks should have a language tag (e.g. ```python)
-      noCodeblockType: bool
+      noCodeblockType: boolean
     }): string
     // Returns a function that can be passed to chunkCb in ChatSession.sendMessage, but with
     // a type writer effect. This can be helpful for GoogleAIStudioCompletionService, as it
@@ -138,7 +139,7 @@ declare module 'langxlang' {
     extractCodeblockFromMarkdown(markdownInput: string): { raw: string, lang: string, code: string }[]
     // Wraps the contents by using the specified token character at least 3 times,
     // ensuring that the token is long enough that it's not present in the content
-    wrapContent(content: string, withChar = '`', initialTokenSuffix = ''): string
+    wrapContent(content: string, withChar?: string, initialTokenSuffix?: string): string
   }
 
   const tools: Tools
@@ -159,6 +160,9 @@ declare module 'langxlang' {
   // This is different from ChatSession, which is for back and forth conversation, and
   // intended for more advanced uses where you want to change the dialogue between a session.
   class Flow {
+    // The responses for the last time the flow was run. Helpful for recovering from errors.
+    lastResponses: CompletionResponse[]
+    lastFlow: SomeFlowChainObject
     constructor(completionService: CompletionService, chain: RootFlowChain, options)
     run(parameters?: Record<string, any>): Promise<FlowRun>
     followUp(priorRun: FlowRun, name: string, parameters?: Record<string, any>): Promise<FlowRun>
@@ -168,15 +172,21 @@ declare module 'langxlang' {
 // FLOW
 interface FlowChainObjectBase {
   prompt: string
-  with: Record<String, string>
-  followUps: Record<string, (resp: CompletionResponse, input: object) => FlowChainObject | FlowChainObjectOneOf>
+  with: Record<string, string>
+  followUps: Record<string, (resp: CompletionResponse, input: object) => SomeFlowChainObject>
 }
 interface FlowChainObject extends FlowChainObjectBase {
-  then: (response: CompletionResponse) => FlowChainObject | FlowChainObjectOneOf
+  then: (response: CompletionResponse) => SomeFlowChainObject
 }
 interface FlowChainObjectOneOf extends FlowChainObjectBase {
-  thenOneOf: (response: CompletionResponse) => Record<string, FlowChainObject | FlowChainObjectOneOf>
+  thenOneOf: (response: CompletionResponse) => Record<string, SomeFlowChainObject>
   discriminator: (response: CompletionResponse) => string
 }
-type RootFlowChain = (parameters: Record<string, any>) => FlowChainObject | FlowChainObjectOneOf
-type FlowRun = { response: CompletionResponse, flow: FlowChainObject | FlowChainObjectOneOf }
+type SomeFlowChainObject = FlowChainObject | FlowChainObjectOneOf
+type RootFlowChain = (parameters: Record<string, any>) => SomeFlowChainObject
+type FlowRun = { 
+  // The final response from the flow
+  response: CompletionResponse,
+  // The responses from each step in the flow
+  responses: CompletionResponse[]
+}

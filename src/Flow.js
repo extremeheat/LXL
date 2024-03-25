@@ -20,9 +20,9 @@ class Flow {
   // A "followUp" is basically a continuation of the conversation, from a specific point.
   // To do this, we implement a caching system (seperate from one built-in to the service) to store the responses to each prompt.
   // We can then use the cached responses to continue the conversation from a specific point.
-  async _run (flow, inherited, runFollowUp, responses) {
-    const details = flow
+  async _run (details, inherited, runFollowUp, responses) {
     this.lastFlow = details
+    this.lastResponses = responses
     const promptFile = details.prompt || inherited.prompt
     if (!promptFile) {
       throw new Error('No prompt provided')
@@ -70,11 +70,11 @@ class Flow {
     if (runFollowUp && details.followUps[runFollowUp.name]) {
       const f = await details.followUps[runFollowUp.name](resp, runFollowUp.input)
       return await this._run(f, nextInherited, null, responses)
-    } else if (flow.nextOneOf) {
-      const choice = await flow.discriminator(resp)
-      return await this._run(await flow.nextOneOf[choice](resp), nextInherited, runFollowUp, responses)
-    } else if (flow.next) {
-      return await this._run(await flow.next(resp), nextInherited, runFollowUp, responses)
+    } else if (details.nextOneOf) {
+      const choice = await details.discriminator(resp)
+      return await this._run(await details.nextOneOf[choice](resp), nextInherited, runFollowUp, responses)
+    } else if (details.next) {
+      return await this._run(await details.next(resp), nextInherited, runFollowUp, responses)
     }
   }
 

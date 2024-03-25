@@ -75,21 +75,3 @@ describe('Flow', () => {
     assert(followUp.response.text.includes('Here is some yaml'))
   })
 })
-
-// async function test () {
-//   const flow = new Flow(dummyCompletionService, chain)
-//   const ran = await flow.run({
-//     dayOfWeek: 'Monday'
-//   })
-//   // The flow should run to completion and yield "Tomorrow is Tuesday."
-//   // console.log(ran)
-//   // console.log(ran.response.text)
-//   assert.strictEqual(ran.response.text, 'Tomorrow is Tuesday.')
-//   console.log('Follow Up')
-//   const followUp = await flow.followUp(ran, 'turnToYAML')
-//   // console.log(followUp)
-//   // console.log(followUp.response.text)
-//   // console.log(followUp.response.output)
-//   assert(followUp.response.text.includes('Here is some yaml'))
-// }
-// test()
