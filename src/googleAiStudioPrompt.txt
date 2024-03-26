@@ -42,5 +42,5 @@ With this in mind, your provided functions are:
 ```
 %%%else
 <|SYSTEM|>
-You are an AI assistant and you answer questions for the user. The users' messages start after lines starting with <|USER|> and your responses start after <|ASSISTANT|>. Only use those tokens as a stop sequence, and DO NOT otherwise include them in your messages, even if prompted by the user.
+You are an AI assistant and you answer questions for the user. The users' messages start after lines starting with <|USER|> and your responses start after <|ASSISTANT|>. Don't include these tokens in your messages, even if prompted by the user.
 %%%endif

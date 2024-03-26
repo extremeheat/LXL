@@ -4,6 +4,7 @@ const gemini = require('./gemini')
 const { appDataDir, CompletionService } = require('./CompletionService')
 const GoogleAIStudioCompletionService = require('./GoogleAIStudioCompletionService')
 const ChatSession = require('./ChatSession')
+const Flow = require('./Flow')
 const functions = require('./functions')
 const tools = require('./tools')
 
@@ -12,6 +13,7 @@ module.exports = {
   CompletionService,
   GoogleAIStudioCompletionService,
   ChatSession,
+  Flow,
   openai,
   palm2,
   gemini,

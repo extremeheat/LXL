@@ -163,6 +163,17 @@ function preMarkdown (text, vars = {}) {
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i]
     if (token[1] === 'if') {
+      // First, a step of pre-processing: if each line in token[0] has at least
+      // 2 spaces of tabs, remove the first two. The user can optionally use this
+      // 2 space tab for readability, but it will be removed in the final output.
+      // The user can write 4+ spaces of tabs to get 2+ space tabs in final output.
+      for (const item of ['ifTrueBlock', 'falseBlock']) {
+        const e = token[0][item]
+        if (e && e.filter(l => !!l.trim()).every(l => l.startsWith('  '))) {
+          token[0][item] = e.map(l => l.slice(2))
+        }
+      }
+
       const { ifCondition, ifTrueBlock, falseBlock } = token[0]
       const condition = ifCondition.trim()
       if (vars[condition]) {

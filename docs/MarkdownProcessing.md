@@ -36,6 +36,8 @@ Hello!
 You are running via API.
 ```
 
+Note: you can optionally put 2 spaces of tabulation in each line after an IF or ELSE block to make the code more readable. This is optional, and will be removed by the parser. If you actually want to put 2+ spaces of tabs, you can add an extra 2 spaces of tabulation (eg use 4 spaces to get 2, 6 to get 4, etc.).
+
 ### Guidance Region
 
 LLMs don't always give you the output you desire for your prompt. One approach to fixing
