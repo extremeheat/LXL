@@ -38,7 +38,7 @@ class Flow {
     const inputHash = this._hash(model, systemPrompt, userPrompt)
     let resp
     if (runFollowUp && runFollowUp.pastResponses[inputHash]) {
-      resp = runFollowUp
+      resp = structuredClone(runFollowUp.pastResponses[inputHash])
     } else {
       resp = await this.service.requestCompletion(model, systemPrompt, userPrompt, this.chunkCb, this.generationOpts)
     }

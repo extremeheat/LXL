@@ -20,6 +20,7 @@ Hello, how are you doing today on this %%%(DAY_OF_WEEK)%%%?
   ~~~yaml
   are_ok: yes # or no, if you're not doing well
   ~~~
+  <ASSISTANT>
 %%%endif
 `.trim().replaceAll('~~~', '```'),
   with: {

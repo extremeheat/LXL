@@ -1,38 +1,46 @@
 ## Flow
 
-For more complex use-cases, it may be required to have a back-and-forth dialogue between the model, a user and the current program.
-This can be achieved by using the `ChatSession` class, which allows for back and forth dialogue and things like function calling.
+For advanced LLM use you may need to have a back-and-forth dialogue between the model, a user and the current program.
 
-However, some workflows may not work well with ChatSession. For example, you may need to update the previous dialogue or pause the
-conversation and return to it later on in a follow-up, but only at a specific point in the conversation flow. For these use-cases,
-we define a `Flow` class.
+This can be achieved by using the `ChatSession` class, which allows for back and forth dialogue and including function calling as intermediate steps.
 
-A Flow takes in a dialogue chain and a prompt and handles parameters and also supports follow up questions.
+However, some workflows may not work well with ChatSession:
+* You may need to update the previous dialogue or pause the conversation and return to it later on in a follow-up, but only at a specific point in the conversation flow.
+* You may be getting bad results with chat sessions and function calling and want to improve the model outputs by breaking up the dialogue into smaller parts. For example, instead of directly calling a function you might want to have the model do some chain of thought in a separate step then audit that with a separate prompt before continuing the conversation.
+* The core of an LLM is text-completion, and you may want to use the model to generate text in a more controlled way than a back-and-forth conversation.
+
+For use-cases like these we define a chain-like abstraction with the `Flow` class. 
+
+A Flow takes in a dialogue chain of nested prompts and parameters and follows and executes the chain until completion.
+It can be made to pause at specific points also support follow-up questions.
 
 ### Example
 
-For example, with the following prompt.md:
+For example, with the following prompt.md (using [MDP](./MarkdownProcessing.md)):
 ````md
-<[USER]>
+<USER>
 Hello, how are you doing today on this %%%(DAY_OF_WEEK)%%%?
-<[ASSISTANT]>
+<ASSISTANT>
 %%%if MODEL_RESPONSE
-  MR: %%%(MODEL_RESPONSE)%%%
-  <[USER]>
+  %%%(MODEL_RESPONSE)%%%
+  <USER>
 %%%endif
 %%%if ASK_FOLLOW_UP
   Great! Can you tell me what day of the week tomorrow is?
-  <[ASSISTANT]>
+  <ASSISTANT>
 %%%endif
 %%%if TURN_TO_YAML
   Thanks, please turn the response into YAML format, like this:
   ```yaml
   are_ok: yes # or no, if you're not doing well
   ```
+  <ASSISTANT>
 %%%endif
 ````
 
-We can construct the following chain:
+We can construct the following chain to ask the user how they are doing, 
+then ask them what day of the week tomorrow is, support a follow-up question 
+after the first response to ask the model to turn the response into YAML format:
 ```js
 const chain = (params) => ({
   prompt: importRawSync('./prompt.md'),
@@ -104,7 +112,7 @@ function chain (initialArguments) {
 
 If you want to run a different next() function based on the response of the current run, you
 can use the `discriminator` function. This function will be called with the response of the current run,
-and should return a string. The string will be used to find the next function to run in the `thenOneOf` object.
+and should return a string. The string will be used to find the next function to run in the `nextOneOf` object.
 
 ```js
 const chain = (params) => ({
@@ -112,7 +120,7 @@ const chain = (params) => ({
   with: {
     SOME_PARAM: 'value'
   },
-  thenOneOf: {
+  nextOneOf: {
     'some response': {
       with: {
         SOME_PARAM: 'new value'
@@ -129,6 +137,8 @@ const chain = (params) => ({
   }
 })
 ```
+
+This can be used for many things including breaking out of the chain early, or running different follow-up chains based on the response.
 
 ### API
 
@@ -154,20 +164,23 @@ interface FlowChainObjectBase {
   prompt: string
   with: Record<string, string>
   followUps: Record<string, (resp: CompletionResponse, input: object) => SomeFlowChainObject>
+  // The function that transforms the response from the model before it's passed to the followUps/next or returned
+  transformResponse: (response: CompletionResponse) => object
 }
 interface FlowChainObject extends FlowChainObjectBase {
-  then: (response: CompletionResponse) => SomeFlowChainObject
+  next: (response: CompletionResponse) => SomeFlowChainObject
 }
 interface FlowChainObjectOneOf extends FlowChainObjectBase {
-  thenOneOf: (response: CompletionResponse) => Record<string, SomeFlowChainObject>
+  nextOneOf: (response: CompletionResponse) => Record<string, SomeFlowChainObject>
   discriminator: (response: CompletionResponse) => string
 }
 type SomeFlowChainObject = FlowChainObject | FlowChainObjectOneOf
 type RootFlowChain = (parameters: Record<string, any>) => SomeFlowChainObject
+type FlowRunResponse = CompletionResponse & { name?: string }
 type FlowRun = {
   // The final response from the flow
-  response: CompletionResponse,
+  response: FlowRunResponse,
   // The responses from each step in the flow
-  responses: CompletionResponse[]
+  responses: FlowRunResponse[]
 }
 ```
