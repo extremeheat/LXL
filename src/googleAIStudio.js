@@ -92,6 +92,18 @@ function readyHTTP ({ baseURL, apiKey }) {
   throttleTime = 1000
 }
 
+function onceWithTimeout (emitter, event, timeout) {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error('Timeout waiting for event'))
+    }, timeout)
+    emitter.once(event, (data) => {
+      clearTimeout(timeoutId)
+      resolve(data)
+    })
+  })
+}
+
 // This method generates a completion using a local AI Studio websocket server that clients can connect to
 async function generateCompletion (model, messages, chunkCb, options) {
   await runServer()
@@ -107,7 +119,7 @@ async function generateCompletion (model, messages, chunkCb, options) {
     chunkCb?.(response)
   }
   serverConnection.on('completionChunk', completionChunk)
-  const [response] = await once(serverConnection, 'completionResponse')
+  const [response] = await onceWithTimeout(serverConnection, 'completionResponse', 120_000) // 2 minutes
   if (response.error) {
     throw new Error('Completion failed: ' + JSON.stringify(response))
   }
