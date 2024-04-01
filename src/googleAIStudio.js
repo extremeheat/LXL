@@ -119,7 +119,7 @@ async function generateCompletion (model, messages, chunkCb, options) {
     chunkCb?.(response)
   }
   serverConnection.on('completionChunk', completionChunk)
-  const [response] = await onceWithTimeout(serverConnection, 'completionResponse', 120_000) // 2 minutes
+  const response = await onceWithTimeout(serverConnection, 'completionResponse', 120_000) // 2 minutes
   if (response.error) {
     throw new Error('Completion failed: ' + JSON.stringify(response))
   }
