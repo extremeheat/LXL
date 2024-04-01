@@ -26,6 +26,10 @@ class GoogleAIStudioCompletionService {
     studio.stopServer()
   }
 
+  close () {
+    this.stop()
+  }
+
   async requestCompletion (model, system, user, chunkCb, options = {}) {
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)

@@ -519,7 +519,7 @@ function stripMarkdown (comment, options = {}) {
 const DEFAULT_EXCLUDE = [/node_modules/, /\.git/, /\/build\//, /\/dist\//]
 
 function stripDiff (diff, options = {}) {
-  const exclude = options.exclude || DEFAULT_EXCLUDE
+  const exclude = options.excluding || DEFAULT_EXCLUDE
   const lines = diff.split('\n')
   const result = []
   let inExcluded = false

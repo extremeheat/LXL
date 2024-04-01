@@ -33,6 +33,8 @@ declare module 'langxlang' {
     ready: Promise<void>
     // Stop the server.
     stop(): void
+    // Stop the server. Same as stop().
+    close(): void
 
     // Request a non-streaming completion from the model.
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string, chunkCb?: ChunkCb, options?: {

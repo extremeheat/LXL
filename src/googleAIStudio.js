@@ -1,7 +1,7 @@
 const { encodeYaml } = require('./tools/yaml')
 const WebSocket = require('ws')
 const debug = require('debug')('lxl')
-const { once, EventEmitter } = require('events')
+const { EventEmitter } = require('events')
 const { importPromptRaw, loadPrompt } = require('./tools/mdp')
 const { sleep } = require('./util')
 
