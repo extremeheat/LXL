@@ -97,7 +97,7 @@ function collectGithubRepoFiles (repo, options) {
   fs.mkdirSync(reposDir, { recursive: true })
   if (!fs.existsSync(repoPath)) {
     const url = options.url || `https://${options.token ? options.token + '@' : ''}github.com/${repo}.git`
-    cp.execSync(`git clone ${url} ${safeName}`, { cwd: reposDir })
+    cp.execSync(`git clone ${url} ${safeName} --depth 1`, { cwd: reposDir })
   }
   // Git pull origin/$branch
   cp.execSync(`git pull origin ${branch}`, { cwd: repoPath })
