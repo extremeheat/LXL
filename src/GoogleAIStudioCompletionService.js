@@ -24,7 +24,7 @@ class GoogleAIStudioCompletionService {
   }
 
   stop () {
-    studio.stopServer()
+    this._studio.stopServer()
   }
 
   close () {
