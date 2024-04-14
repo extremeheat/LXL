@@ -7,10 +7,11 @@ LangXLang (LXL), a Node.js library to use OpenAI's GPT models and Google's Gemin
 
 Supported models are:
 * OpenAI: `gpt-3.5-turbo-16k`, `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo-preview` (or any specific gpt- model listed [here](https://platform.openai.com/docs/models/))
-* Google: `gemini-1.0-pro` (Gemini), or `text-bison-001`, `text-bison-002`, `palm-2` (PaLM 2)
+* Google Gemini: `gemini-1.0-pro` or `gemini-1.5-pro-latest`
+* Google Legacy PaLM2: `text-bison-001`, `text-bison-002`, `palm-2`
 
 ## Installation
-```sh
+```coffee
 npm install langxlang
 ```
 
@@ -26,8 +27,12 @@ const { ChatSession, CompletionService } = require('langxlang')
 
 ```js
 const service = new CompletionService({ openai: [key], gemini: [key] })
-const response = await service.requestCompletion('gpt-3.5-turbo-16k', /* empty system prompt */ '', 'Tell me about yourself')
-console.log(response.text)
+const response = await service.requestCompletion(
+  'gemini-1.0-pro',         //  Model name
+  '',                       //  System prompt (optional)
+  'Tell me about yourself'  //  User prompt
+)
+console.log(response.text) // Hello! I'm Gemini, a large language model created by Google AI...
 ```
 
 #### Chatting with a model
@@ -70,7 +75,7 @@ See a running example in `examples/streaming.js`.
 
 ### CompletionService
 
-#### constructor(apiKeys: { openai: string, gemini: string })
+#### `constructor(apiKeys: { openai: string, gemini: string })`
 
 Creates an instance of completion service.
 Note: as an alternative to explicitly passing the API keys in the constructor you can: 
@@ -78,17 +83,17 @@ Note: as an alternative to explicitly passing the API keys in the constructor yo
 * or, define the keys inside `/.local/share/lxl-cache.json` (linux), `~/Library/Application Support/lxl-cache.json` (mac), or `%appdata%\lxl-cache.json` (windows) with the structure
 `{"keys": {"openai": "your-openai-key", "gemini": "your-gemini-key"}}`
 
-#### async requestCompletion(model: string, systemPrompt: string, userPrompt: string)
+#### `async requestCompletion(model: string, systemPrompt: string, userPrompt: string)`
 
 Request a non-streaming completion from the model.
 
 ### ChatSession
 
-### constructor(completionService: CompletionService, model: string, systemPrompt: string)
+#### `constructor(completionService: CompletionService, model: string, systemPrompt: string)`
 
 ChatSession is for back and forth conversation between a user an an LLM.
 
-#### async sendMessage (message: string, chunkCallback: ({ content: string }) => void)
+#### `async sendMessage (message: string, chunkCallback: ({ content: string }) => void)`
 
 Send a message to the LLM and receive a response as return value. The chunkCallback
 can be defined to listen to bits of the message stream as it's being written by the LLM.

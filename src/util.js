@@ -10,8 +10,10 @@ const knownModelInfo = {
   'gpt-4': { author: 'openai', family: 'openai', displayName: 'GPT-4', safeId: 'gpt4' },
   'gpt-4-turbo-preview': { author: 'openai', family: 'openai', displayName: 'GPT-4 Turbo Preview', safeId: 'gpt4turbo' },
   'gemini-1.0-pro': { author: 'google', family: 'gemini', displayName: 'Gemini 1.0 Pro', safeId: 'gemini1_0pro' },
-  'gemini-1.5-pro': { author: 'googleaistudio', family: 'gemini', displayName: 'Gemini 1.5 Pro', safeId: 'gemini1_5pro' }
+  // Gemini 1.5 Pro has 2 requests per minute
+  'gemini-1.5-pro': { author: 'google', family: 'gemini', displayName: 'Gemini 1.5 Pro', safeId: 'gemini1_5pro', rateLimit: 1000 * 30 }
 }
+knownModelInfo['gemini-1.5-pro-latest'] = knownModelInfo['gemini-1.5-pro']
 const knownModels = Object.keys(knownModelInfo)
 
 function getModelInfo (model) {
@@ -28,10 +30,25 @@ function getModelInfo (model) {
   }
 }
 
+// April 2024 - Only Gemini 1.5 supports instructions
+function checkDoesGoogleModelSupportInstructions (model) {
+  return model.includes('gemini-1.5')
+}
+
+function isGoogleModel (model) {
+  return getModelInfo(model).author === 'google'
+}
+
+function getRateLimit (model) {
+  // Only Google models have rate limits
+  if (!isGoogleModel(model)) return 0
+  return knownModelInfo[model]?.rateLimit ?? 1000
+}
+
 async function sleep (ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
   })
 }
 
-module.exports = { sleep, cleanMessage, getModelInfo, knownModelInfo, knownModels }
+module.exports = { sleep, cleanMessage, getModelInfo, getRateLimit, checkDoesGoogleModelSupportInstructions, knownModelInfo, knownModels }

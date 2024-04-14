@@ -1,5 +1,5 @@
 const caching = require('./caching')
-const studio = require('./googleAIStudio')
+const studioLoader = require('./googleAIStudio')
 
 const supportedModels = ['gemini-1.0-pro', 'gemini-1.5-pro']
 
@@ -10,20 +10,21 @@ function checkContainsStopTokenLine (message, token) {
 
 class GoogleAIStudioCompletionService {
   constructor (serverPortOrEndpointData = 8095) {
+    this._studio = studioLoader()
     if (typeof serverPortOrEndpointData === 'number') {
       this.serverPort = serverPortOrEndpointData
-      this.ready = studio.runServer(this.serverPort)
+      this.ready = this._studio.runServer(this.serverPort)
     } else if (typeof serverPortOrEndpointData === 'object') {
       this.serverBase = serverPortOrEndpointData
       if (!this.serverBase?.baseURL) throw new Error('Invalid configuration for HTTP server endpoint')
-      this.ready = studio.readyHTTP(this.serverBase)
+      this.ready = this._studio.readyHTTP(this.serverBase)
     } else {
       throw new Error('Invalid arguments')
     }
   }
 
   stop () {
-    studio.stopServer()
+    this._studio.stopServer()
   }
 
   close () {
@@ -55,7 +56,7 @@ class GoogleAIStudioCompletionService {
     const mergedPrompt = [system?.basePrompt || system, user?.basePrompt || user].join('\n')
     const messages = [{ role: 'user', content: mergedPrompt }]
     if (guidance) messages.push({ role: 'model', content: guidance })
-    const result = await studio.generateCompletion(model, messages, chunkCb)
+    const result = await this._studio.generateCompletion(model, messages, chunkCb)
     let combinedResult = result.text
     if (options.autoFeed) {
       const until = options.autoFeed.stopLine
@@ -72,7 +73,7 @@ class GoogleAIStudioCompletionService {
         }
         for (let i = 0; i < maxRounds; i++) {
           const lastMessage = messages[messages.length - 1]
-          const now = await studio.generateCompletion(model, messages, chunkCb)
+          const now = await this._studio.generateCompletion(model, messages, chunkCb)
           lastMessage.content += now.text
           combinedResult += now.text
           if (checkContainsStopTokenLine(now.text, until)) {
@@ -89,7 +90,7 @@ class GoogleAIStudioCompletionService {
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
-    const result = await studio.requestChatCompletion(model, messages, chunkCb, { maxTokens, functions })
+    const result = await this._studio.requestChatCompletion(model, messages, chunkCb, { maxTokens, functions })
     return { ...result, completeMessage: result.text }
   }
 }

@@ -14,6 +14,8 @@ declare module 'langxlang' {
 
     cachePath: string
 
+    listModels(): Promise<{ openai: Record<string, object>, google: Record<string, object> }>
+
     // Request a non-streaming completion from the model.
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?, options?: {
       // If true, the response will be cached and returned from the cache if the same request is made again.
@@ -21,6 +23,8 @@ declare module 'langxlang' {
     }): Promise<CompletionResponse>
   }
 
+  // Note: GoogleAIStudioCompletionService does NOT use the official AI Studio API, but instead uses a relay server to forward requests to an AIStudio client.
+  // Use the standard CompletionService instead to use the official API.
   class GoogleAIStudioCompletionService {
     // Creates an instance of GoogleAIStudioCompletionService that hosts a WebSocket server at specified port.
     // AIStudio clients can connect to that port to work with LXL.
