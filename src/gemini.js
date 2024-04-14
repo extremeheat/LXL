@@ -24,8 +24,9 @@ const defaultSafety = [
 const rateLimits = {}
 
 async function generateChatCompletionEx (model, messages, options, chunkCb) {
-  await rateLimits[model]
-  rateLimits[model] = utils.sleep(options.rateLimit ?? utils.getRateLimit(model))
+  rateLimits[options.apiKey] ??= {}
+  await rateLimits[options.apiKey][model]
+  rateLimits[options.apiKey][model] = utils.sleep(options.rateLimit ?? utils.getRateLimit(model))
   const google = new GoogleGenerativeAI(options.apiKey)
   const generator = google.getGenerativeModel({ model }, { apiVersion: 'v1beta' })
   // contents: Content[];

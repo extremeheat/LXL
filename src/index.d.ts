@@ -23,6 +23,8 @@ declare module 'langxlang' {
     }): Promise<CompletionResponse>
   }
 
+  // Note: GoogleAIStudioCompletionService does NOT use the official AI Studio API, but instead uses a relay server to forward requests to an AIStudio client.
+  // Use the standard CompletionService instead to use the official API.
   class GoogleAIStudioCompletionService {
     // Creates an instance of GoogleAIStudioCompletionService that hosts a WebSocket server at specified port.
     // AIStudio clients can connect to that port to work with LXL.
