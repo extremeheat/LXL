@@ -25,7 +25,10 @@ class ChatSession {
     const modelInfo = getModelInfo(this.model)
     this.modelAuthor = modelInfo.author
     this.modelFamily = modelInfo.family
-    if (modelInfo.author === 'googleaistudio') {
+    if (this.service.constructor.name === 'GoogleAIStudioCompletionService') {
+      this.modelAuthor = 'googleaistudio'
+    }
+    if (this.modelAuthor === 'googleaistudio') {
       const { result, metadata } = await convertFunctionsToGoogleAIStudio(functions)
       this.functionsPayload = result
       this.functionsMeta = metadata
@@ -138,7 +141,8 @@ class ChatSession {
       // we need to call the function with the payload and then send the result back to the model
       for (const index in response.fnCalls) {
         const call = response.fnCalls[index]
-        await this._callFunction(call.name, call.args ? JSON.parse(call.args) : {}, response)
+        const args = typeof call.args === 'string' ? JSON.parse(call.args) : call.args
+        await this._callFunction(call.name, args ?? {}, response)
       }
       return this._submitRequest(chunkCb)
     } else if (response.type === 'text') {

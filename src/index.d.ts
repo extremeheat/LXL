@@ -14,6 +14,8 @@ declare module 'langxlang' {
 
     cachePath: string
 
+    listModels(): Promise<{ openai: Record<string, object>, google: Record<string, object> }>
+
     // Request a non-streaming completion from the model.
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?, options?: {
       // If true, the response will be cached and returned from the cache if the same request is made again.

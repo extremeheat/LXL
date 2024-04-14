@@ -1,7 +1,7 @@
 const openai = require('./openai')
 const palm2 = require('./palm2')
 const gemini = require('./gemini')
-const { cleanMessage, getModelInfo, knownModels } = require('./util')
+const { cleanMessage, getModelInfo, checkDoesGoogleModelSupportInstructions, knownModels } = require('./util')
 const caching = require('./caching')
 
 class CompletionService {
@@ -17,6 +17,20 @@ class CompletionService {
     this.openaiApiKey = keys.openai || process.env.OPENAI_API_KEY
   }
 
+  async listModels () {
+    const openaiModels = {}
+    const geminiModels = {}
+    if (this.openaiApiKey) {
+      const openaiList = await openai.listModels(this.openaiApiKey)
+      Object.assign(openaiModels, Object.fromEntries(openaiList.map((e) => ([e.id, e]))))
+    }
+    if (this.geminiApiKey) {
+      const geminiList = await gemini.listModels(this.geminiApiKey)
+      Object.assign(geminiModels, Object.fromEntries(geminiList.map((e) => ([e.name, e]))))
+    }
+    return { openai: openaiModels, google: geminiModels }
+  }
+
   async _requestCompletionOpenAI (model, system, user) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
     const guidance = system?.guidanceText || user?.guidanceText || ''
@@ -27,11 +41,16 @@ class CompletionService {
     return { text: guidance + result.message.content }
   }
 
-  async _requestCompletionGemini (model, system, user) {
+  async _requestCompletionGemini (model, system, user, chunkCb) {
     if (!this.geminiApiKey) throw new Error('Gemini API key not set')
     const guidance = system?.guidanceText || user?.guidanceText || ''
-    const mergedPrompt = [system, user].join('\n')
-    const result = await gemini.generateCompletion(model, this.geminiApiKey, mergedPrompt)
+    // April 2024 - Only Gemini 1.5 supports instructions
+    if (!checkDoesGoogleModelSupportInstructions(model)) {
+      const mergedPrompt = [system, user].join('\n')
+      system = ''
+      user = mergedPrompt
+    }
+    const result = await gemini.generateCompletion(model, system, user, { apiKey: this.geminiApiKey }, chunkCb)
     return { text: guidance + result.text() }
   }
 
@@ -58,7 +77,7 @@ class CompletionService {
     const { family } = getModelInfo(model)
     switch (family) {
       case 'openai': return saveIfCaching(await this._requestCompletionOpenAI(model, system, user))
-      case 'gemini': return saveIfCaching(await this._requestCompletionGemini(model, system, user))
+      case 'gemini': return saveIfCaching(await this._requestCompletionGemini(model, system, user, chunkCb))
       case 'palm2': {
         if (!this.palm2ApiKey) throw new Error('PaLM2 API key not set')
         const result = await palm2.requestPalmCompletion(system + '\n' + user, this.palm2ApiKey, model)
@@ -129,30 +148,32 @@ class CompletionService {
     const geminiMessages = messages.map((msg) => {
       const m = structuredClone(msg)
       if (msg.role === 'assistant') m.role = 'model'
-      if (msg.role === 'system') m.role = 'user'
+      if (msg.role === 'system') m.role = 'system'
       if (msg.role === 'guidance') m.role = 'model'
-      if (msg.content) {
+      if (msg.content != null) {
         delete m.content
         m.parts = [{ text: msg.content }]
       }
       return m
     })
-    const response = await gemini.requestChatCompletion(model, geminiMessages, {
+    const response = await gemini.generateChatCompletionEx(model, geminiMessages, {
       apiKey: this.geminiApiKey,
       functions
-    })
-    if (response.text) {
-      const answer = response.text
-      // Currently Gemini doesn't support streaming, so we just return the complete message
-      chunkCb?.({ content: answer })
+    }, chunkCb)
+    if (response.text()) {
+      const answer = response.text()
+      chunkCb?.({ done: true, delta: '' })
       const result = { type: 'text', completeMessage: answer }
       return result
-    } else if (response.functionCall) {
-      const fnCalls = {
-        0: {
-          id: response.functionCall.name,
-          name: response.functionCall.name,
-          args: JSON.stringify(response.functionCall.args)
+    } else if (response.functionCalls()) {
+      const calls = response.functionCalls()
+      const fnCalls = {}
+      for (let i = 0; i < calls.length; i++) {
+        const call = calls[i]
+        fnCalls[i] = {
+          id: i,
+          name: call.name,
+          args: call.args
         }
       }
       const result = { type: 'function', fnCalls }

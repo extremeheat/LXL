@@ -98,4 +98,10 @@ function getStreamingCompletion (apiKey, payload, completionCb) {
   })
 }
 
-module.exports = { generateCompletion, getStreamingCompletion, streamingChatCompletion }
+async function listModels (apiKey) {
+  const openai = new OpenAI({ apiKey })
+  const list = await openai.models.list()
+  return list.body.data
+}
+
+module.exports = { generateCompletion, getStreamingCompletion, streamingChatCompletion, listModels }
