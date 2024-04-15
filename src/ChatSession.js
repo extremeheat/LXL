@@ -126,11 +126,10 @@ class ChatSession {
 
   async _submitRequest (chunkCb) {
     debug('Sending to', this.model, this.messages)
-    const response = await this.service.requestStreamingChat(this.model, {
+    const [response] = await this.service.requestChatCompletion(this.model, {
       maxTokens: this.maxTokens,
       messages: this.messages,
       functions: this.functionsPayload
-      // stream: !!chunkCb
     }, chunkCb)
     debug('Streaming response', JSON.stringify(response))
     if (response.type === 'function') {
@@ -146,7 +145,7 @@ class ChatSession {
       }
       return this._submitRequest(chunkCb)
     } else if (response.type === 'text') {
-      this.messages.push({ role: 'assistant', content: response.completeMessage })
+      this.messages.push({ role: 'assistant', content: response.content })
     }
     return response
   }
@@ -174,9 +173,9 @@ class ChatSession {
           break
         }
       }
-      response.completeMessage = message.guidanceText + response.completeMessage
+      response.content = message.guidanceText + response.content
     }
-    return { text: response.completeMessage, calledFunctions: this._calledFunctionsForRound }
+    return { text: response.content, calledFunctions: this._calledFunctionsForRound }
   }
 }
 

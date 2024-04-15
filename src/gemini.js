@@ -38,6 +38,7 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
     contents: messages.filter(m => m.role !== 'system'),
     tools: [],
     safetySettings: options.safetySettings || defaultSafety,
+    generationConfig: options.generationConfig,
     systemInstruction: systemMessage
       ? {
           role: 'user',
@@ -68,6 +69,7 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
     contents: messages.filter(m => m.role !== 'system'),
     tools: [],
     safetySettings: options.safetySettings || defaultSafety,
+    generationConfig: options.generationConfig,
     systemInstruction: systemMessage
       ? {
           role: 'user',

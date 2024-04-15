@@ -9,7 +9,8 @@ async function generateCompletion (model, system, user, options = {}) {
   if (options.guidanceMessage) messages.push({ role: 'assistant', content: options.guidanceMessage })
   const completion = await openai.chat.completions.create({
     messages,
-    model
+    model,
+    ...options
   })
   const choice = completion.choices[0]
   // console.log(completion.choices[0])
