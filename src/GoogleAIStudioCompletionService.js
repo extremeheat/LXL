@@ -86,7 +86,7 @@ class GoogleAIStudioCompletionService {
     return [saveIfCaching({ text: guidance + combinedResult })]
   }
 
-  async requestStreamingChat (model, { messages, maxTokens, functions }, chunkCb) {
+  async requestChatCompletion (model, { messages, maxTokens, functions }, chunkCb) {
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }

@@ -43,7 +43,7 @@ async function testCompletionChat () {
   const service = new GoogleAIStudioCompletionService(8095)
   await service.ready
 
-  const [result] = await service.requestStreamingChat('gemini-1.5-pro', {
+  const [result] = await service.requestChatCompletion('gemini-1.5-pro', {
     messages: [{ role: 'user', content: 'How are you doing today?' }]
   }, pleasantWriter())
   console.log('Result', result.content)
