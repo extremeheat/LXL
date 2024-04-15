@@ -40,7 +40,8 @@ class Flow {
     if (runFollowUp && runFollowUp.pastResponses[inputHash]) {
       resp = structuredClone(runFollowUp.pastResponses[inputHash])
     } else {
-      resp = await this.service.requestCompletion(model, systemPrompt, userPrompt, this.chunkCb, this.generationOpts)
+      const rs = await this.service.requestCompletion(model, systemPrompt, userPrompt, this.chunkCb, this.generationOpts)
+      resp = rs[0]
     }
     resp.inputHash = inputHash
     resp.name = details.name

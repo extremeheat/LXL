@@ -202,13 +202,13 @@ function mod () {
       debug('Function call', fnName, fnArgs)
       return {
         type: 'function',
-        text: modelComment,
+        content: modelComment,
         fnCalls: [{ name: fnName, args: fnArgs }]
       }
     } else {
       return {
         type: 'text',
-        text: result
+        content: result
       }
     }
   }

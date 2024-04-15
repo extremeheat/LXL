@@ -48,11 +48,11 @@ const dummyCompletionService = {
     const mergedPrompt = [systemPrompt, userPrompt].join('\n')
     // console.log('mergedPrompt', mergedPrompt)
     if (mergedPrompt.includes('YAML')) {
-      return { text: 'Sure! Here is some yaml:\n```yaml\nare_ok: yes\n```\nI hope that helps!' }
+      return [{ text: 'Sure! Here is some yaml:\n```yaml\nare_ok: yes\n```\nI hope that helps!' }]
     } else if (mergedPrompt.includes('tomorrow')) {
-      return { text: 'Tomorrow is Tuesday.' }
+      return [{ text: 'Tomorrow is Tuesday.' }]
     } else {
-      return { text: `You asked: "${JSON.stringify(mergedPrompt)}".\n` }
+      return [{ text: `You asked: "${JSON.stringify(mergedPrompt)}".\n` }]
     }
   }
 }

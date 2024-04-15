@@ -20,7 +20,7 @@ declare module 'langxlang' {
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?, options?: {
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
-    }): Promise<CompletionResponse>
+    }): Promise<CompletionResponse[]>
   }
 
   // Note: GoogleAIStudioCompletionService does NOT use the official AI Studio API, but instead uses a relay server to forward requests to an AIStudio client.
@@ -50,7 +50,7 @@ declare module 'langxlang' {
       },
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
-    }): Promise<CompletionResponse>
+    }): Promise<CompletionResponse[]>
   }
 
   type SomeCompletionService = CompletionService | GoogleAIStudioCompletionService

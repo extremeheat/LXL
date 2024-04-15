@@ -3,22 +3,10 @@ const debug = require('debug')('lxl')
 const utils = require('./util')
 
 const defaultSafety = [
-  {
-    category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-    threshold: 'BLOCK_ONLY_HIGH'
-  },
-  {
-    category: 'HARM_CATEGORY_HARASSMENT',
-    threshold: 'BLOCK_NONE'
-  },
-  {
-    category: 'HARM_CATEGORY_HATE_SPEECH',
-    threshold: 'BLOCK_ONLY_HIGH'
-  },
-  {
-    category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-    threshold: 'BLOCK_ONLY_HIGH'
-  }
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' }
 ]
 
 const rateLimits = {}
@@ -86,17 +74,36 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
     body: JSON.stringify(payload)
   }).then(res => res.json())
   debug('Gemini Response', JSON.stringify(data))
-  const candidate = data.candidates?.[0]
-  if (!candidate) throw new Error('Gemini did not return any candidates')
-  if (candidate.finishReason !== 'STOP') {
-    debug('Gemini complete fail', JSON.stringify(data, null, 2))
-    throw new Error('Gemini could not complete the chat. Finish reason: ' + candidate.finishReason)
-  } else {
-    const response = candidate.content.parts[0]
-    return {
-      text: () => response.text,
-      raw: data
+  const resultCandidates = []
+  for (const candidate of data.candidates) {
+    if (candidate.finishReason === 'STOP') {
+      if (candidate.content.functionCalls?.length) {
+        // Function response
+        resultCandidates.push({
+          type: 'function',
+          fnCalls: candidate.content.functionCalls,
+          raw: data
+        })
+      } else {
+        // Text response
+        resultCandidates.push({
+          type: 'text',
+          text: () => candidate.content.parts.reduce((acc, part) => acc + part.text, ''),
+          raw: data
+        })
+      }
+    } else if (candidate.finishReason === 'SAFETY') {
+      // Function call
+      throw new Error(`Gemini completion candidate ${candidate.index} was blocked by safety filter: ${JSON.stringify(candidate.safetyRatings)}`)
+    } else {
+      throw new Error(`Gemini completion candidate ${candidate.index} failed with reason: ${candidate.finishReason}`)
     }
+  }
+  if (!resultCandidates.length) throw new Error('Gemini did not return any candidates')
+  return {
+    choices: resultCandidates,
+    text: () => resultCandidates[0].text(),
+    functionCalls: () => resultCandidates[0].fnCalls
   }
 }
 

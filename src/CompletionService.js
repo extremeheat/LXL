@@ -36,14 +36,16 @@ class CompletionService {
   async _requestCompletionOpenAI (model, system, user, { maxTokens, temperature, topP }, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
     const guidance = system?.guidanceText || user?.guidanceText || ''
-    const result = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
+    const [result] = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
       apiKey: this.openaiApiKey,
       guidanceMessage: guidance,
-      max_tokens: maxTokens,
-      temperature,
-      top_p: topP
+      generationConfig: {
+        max_tokens: maxTokens,
+        temperature,
+        top_p: topP
+      }
     })
-    return { text: guidance + result.message.content }
+    return [{ text: guidance + result.content }]
   }
 
   async _requestCompletionGemini (model, system, user, { maxTokens, temperature, topP, topK }, chunkCb) {
@@ -59,7 +61,7 @@ class CompletionService {
       apiKey: this.geminiApiKey,
       generationConfig: { maxOutputTokens: maxTokens, temperature, topP, topK }
     }, chunkCb)
-    return { text: guidance + result.text() }
+    return [{ text: guidance + result.text() }]
   }
 
   async requestCompletion (model, system, user, chunkCb, options = {}) {
@@ -104,59 +106,22 @@ class CompletionService {
 
   async _requestStreamingChatOpenAI (model, messages, { maxTokens, temperature, topP }, functions, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
-    let completeMessage = ''
-    let finishReason
-    const fnCalls = {}
-    await openai.getStreamingCompletion(this.openaiApiKey, {
+    const [choice] = await openai.generateChatCompletionIn(
       model,
-      max_tokens: maxTokens,
-      temperature,
-      top_p: topP,
-      messages: messages.map((entry) => {
+      messages.map((entry) => {
         const msg = structuredClone(entry)
         if (msg.role === 'model') msg.role = 'assistant'
         if (msg.role === 'guidance') msg.role = 'assistant'
         return msg
       }),
-      stream: true,
-      tools: functions || undefined,
-      tool_choice: functions ? 'auto' : undefined
-    }, (chunk) => {
-      if (!chunk) {
-        chunkCb?.({ done: true, delta: '' })
-        return
-      }
-      const choice = chunk.choices[0]
-      if (choice.finish_reason) {
-        finishReason = choice.finish_reason
-      }
-      if (choice.message) {
-        completeMessage += choice.message.content
-      } else if (choice.delta) {
-        const delta = choice.delta
-        if (delta.tool_calls) {
-          for (const call of delta.tool_calls) {
-            fnCalls[call.index] ??= {
-              id: call.id,
-              name: '',
-              args: ''
-            }
-            const entry = fnCalls[call.index]
-            if (call.function.name) {
-              entry.name = call.function.name
-            }
-            if (call.function.arguments) {
-              entry.args += call.function.arguments
-            }
-          }
-        } else if (delta.content) {
-          completeMessage += delta.content
-          chunkCb?.(choice.delta)
-        }
-      } else throw new Error('Unknown chunk type')
-    })
-    const type = finishReason === 'tool_calls' ? 'function' : 'text'
-    return { type, completeMessage, fnCalls }
+      {
+        apiKey: this.openaiApiKey,
+        generationConfig: { max_tokens: maxTokens, temperature, top_p: topP }
+      },
+      chunkCb
+    )
+    const choiceType = choice.finishReason === 'function_call' ? 'function' : 'text'
+    return [{ type: choiceType, ...choice }] // ...{ content, fnCalls, finishReason }
   }
 
   async _requestStreamingChatGemini (model, messages, { maxTokens, temperature, topP, topK }, functions, chunkCb) {
@@ -180,8 +145,8 @@ class CompletionService {
     if (response.text()) {
       const answer = response.text()
       chunkCb?.({ done: true, delta: '' })
-      const result = { type: 'text', completeMessage: answer }
-      return result
+      const result = { type: 'text', content: answer }
+      return [result]
     } else if (response.functionCalls()) {
       const calls = response.functionCalls()
       const fnCalls = {}
@@ -194,13 +159,13 @@ class CompletionService {
         }
       }
       const result = { type: 'function', fnCalls }
-      return result
+      return [result]
     } else {
       throw new Error('Unknown response from Gemini')
     }
   }
 
-  async requestStreamingChat (model, { messages, maxTokens, functions }, chunkCb) {
+  async requestChatCompletion (model, { messages, maxTokens, functions }, chunkCb) {
     const { family } = getModelInfo(model)
     switch (family) {
       case 'openai': return this._requestStreamingChatOpenAI(model, messages, { ...this.defaultGenerationOptions, maxTokens }, functions, chunkCb)
