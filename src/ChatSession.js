@@ -71,12 +71,14 @@ class ChatSession {
   // This calls a function and adds the reponse to the context so the model can be called again
   async _callFunction (functionName, payload, metadata) {
     if (this.modelAuthor === 'googleaistudio') {
-      let content
-      if (metadata.text) content = metadata.text + '\n'
-      content = content.trim()
-      const arStr = Object.keys(payload).length ? JSON.stringify(payload) : ''
-      content += `\n<FUNCTION_CALL>${functionName}(${arStr})</FUNCTION_CALL>`
-      this.messages.push({ role: 'assistant', content })
+      if (metadata.content) {
+        let content = ''
+        content = metadata.content + '\n'
+        content = content.trim()
+        const arStr = Object.keys(payload).length ? JSON.stringify(payload) : ''
+        content += `\n<FUNCTION_CALL>${functionName}(${arStr})</FUNCTION_CALL>`
+        this.messages.push({ role: 'assistant', content })
+      }
       const result = await this._callFunctionWithArgs(functionName, payload)
       this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
     } else if (this.modelFamily === 'openai') {
@@ -126,11 +128,10 @@ class ChatSession {
 
   async _submitRequest (chunkCb) {
     debug('Sending to', this.model, this.messages)
-    const response = await this.service.requestStreamingChat(this.model, {
+    const [response] = await this.service.requestChatCompletion(this.model, {
       maxTokens: this.maxTokens,
       messages: this.messages,
       functions: this.functionsPayload
-      // stream: !!chunkCb
     }, chunkCb)
     debug('Streaming response', JSON.stringify(response))
     if (response.type === 'function') {
@@ -141,12 +142,12 @@ class ChatSession {
       // we need to call the function with the payload and then send the result back to the model
       for (const index in response.fnCalls) {
         const call = response.fnCalls[index]
-        const args = typeof call.args === 'string' ? JSON.parse(call.args) : call.args
+        const args = (typeof call.args === 'string' && call.args.length) ? JSON.parse(call.args) : call.args
         await this._callFunction(call.name, args ?? {}, response)
       }
       return this._submitRequest(chunkCb)
     } else if (response.type === 'text') {
-      this.messages.push({ role: 'assistant', content: response.completeMessage })
+      this.messages.push({ role: 'assistant', content: response.content })
     }
     return response
   }
@@ -174,9 +175,9 @@ class ChatSession {
           break
         }
       }
-      response.completeMessage = message.guidanceText + response.completeMessage
+      response.content = message.guidanceText + response.content
     }
-    return { text: response.completeMessage, calledFunctions: this._calledFunctionsForRound }
+    return { text: response.content, calledFunctions: this._calledFunctionsForRound }
   }
 }
 

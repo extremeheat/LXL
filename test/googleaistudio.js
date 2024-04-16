@@ -12,13 +12,13 @@ async function testCompletion () {
 
   const q1 = 'Why is the sky blue?'
   console.log('>', q1)
-  const result = await service.requestCompletion('gemini-1.5-pro', '', q1, pleasantWriter())
+  const [result] = await service.requestCompletion('gemini-1.5-pro', '', q1, pleasantWriter())
   process.stdout.write('\n')
   console.log('Result 1', result.text)
 
   const q2 = 'When do you think we will first land humans on Mars?'
   console.log('>', q2)
-  const result2 = await service.requestCompletion('gemini-1.5-pro', '', q2, pleasantWriter())
+  const [result2] = await service.requestCompletion('gemini-1.5-pro', '', q2, pleasantWriter())
   process.stdout.write('\n')
   console.log('Result 2', result2.text)
 
@@ -31,7 +31,7 @@ async function testCachedCompletion () {
 
   const q1 = 'Why is the sky blue?'
   console.log('>', q1)
-  const result = await service.requestCompletion('gemini-1.5-pro', '', q1, pleasantWriter(), {
+  const [result] = await service.requestCompletion('gemini-1.5-pro', '', q1, pleasantWriter(), {
     enableCaching: true
   })
   console.log('Cached Result 1', result)
@@ -43,10 +43,10 @@ async function testCompletionChat () {
   const service = new GoogleAIStudioCompletionService(8095)
   await service.ready
 
-  const result = await service.requestStreamingChat('gemini-1.5-pro', {
+  const [result] = await service.requestChatCompletion('gemini-1.5-pro', {
     messages: [{ role: 'user', content: 'How are you doing today?' }]
   }, pleasantWriter())
-  console.log('Result', result.text)
+  console.log('Result', result.content)
   service.stop()
 }
 

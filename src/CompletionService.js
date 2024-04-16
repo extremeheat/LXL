@@ -15,6 +15,8 @@ class CompletionService {
     this.palm2ApiKey = keys.palm2 || process.env.PALM2_API_KEY
     this.geminiApiKey = keys.gemini || process.env.GEMINI_API_KEY
     this.openaiApiKey = keys.openai || process.env.OPENAI_API_KEY
+
+    this.defaultGenerationOptions = options.generationOptions
   }
 
   async listModels () {
@@ -31,17 +33,22 @@ class CompletionService {
     return { openai: openaiModels, google: geminiModels }
   }
 
-  async _requestCompletionOpenAI (model, system, user) {
+  async _requestCompletionOpenAI (model, system, user, { maxTokens, temperature, topP }, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
     const guidance = system?.guidanceText || user?.guidanceText || ''
-    const result = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
+    const response = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
       apiKey: this.openaiApiKey,
-      guidanceMessage: guidance
+      guidanceMessage: guidance,
+      generationConfig: {
+        max_tokens: maxTokens,
+        temperature,
+        top_p: topP
+      }
     })
-    return { text: guidance + result.message.content }
+    return response.choices.map((choice) => ({ text: guidance + choice.content }))
   }
 
-  async _requestCompletionGemini (model, system, user, chunkCb) {
+  async _requestCompletionGemini (model, system, user, { maxTokens, temperature, topP, topK }, chunkCb) {
     if (!this.geminiApiKey) throw new Error('Gemini API key not set')
     const guidance = system?.guidanceText || user?.guidanceText || ''
     // April 2024 - Only Gemini 1.5 supports instructions
@@ -50,8 +57,11 @@ class CompletionService {
       system = ''
       user = mergedPrompt
     }
-    const result = await gemini.generateCompletion(model, system, user, { apiKey: this.geminiApiKey }, chunkCb)
-    return { text: guidance + result.text() }
+    const result = await gemini.generateCompletion(model, system, user, {
+      apiKey: this.geminiApiKey,
+      generationConfig: { maxOutputTokens: maxTokens, temperature, topP, topK }
+    }, chunkCb)
+    return [{ text: guidance + result.text() }]
   }
 
   async requestCompletion (model, system, user, chunkCb, options = {}) {
@@ -73,11 +83,17 @@ class CompletionService {
       }
       return response
     }
-
+    const genOpts = {
+      ...this.defaultGenerationOptions,
+      maxTokens: options.maxTokens,
+      temperature: options.temperature,
+      topP: options.topP,
+      topK: options.topK
+    }
     const { family } = getModelInfo(model)
     switch (family) {
-      case 'openai': return saveIfCaching(await this._requestCompletionOpenAI(model, system, user))
-      case 'gemini': return saveIfCaching(await this._requestCompletionGemini(model, system, user, chunkCb))
+      case 'openai': return saveIfCaching(await this._requestCompletionOpenAI(model, system, user, genOpts))
+      case 'gemini': return saveIfCaching(await this._requestCompletionGemini(model, system, user, genOpts, chunkCb))
       case 'palm2': {
         if (!this.palm2ApiKey) throw new Error('PaLM2 API key not set')
         const result = await palm2.requestPalmCompletion(system + '\n' + user, this.palm2ApiKey, model)
@@ -88,62 +104,36 @@ class CompletionService {
     }
   }
 
-  async _requestStreamingChatOpenAI (model, messages, maxTokens, functions, chunkCb) {
+  async _requestStreamingChatOpenAI (model, messages, { maxTokens, temperature, topP }, functions, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
-    let completeMessage = ''
-    let finishReason
-    const fnCalls = {}
-    await openai.getStreamingCompletion(this.openaiApiKey, {
+    const response = await openai.generateChatCompletionIn(
       model,
-      max_tokens: maxTokens,
-      messages: messages.map((entry) => {
+      messages.map((entry) => {
         const msg = structuredClone(entry)
         if (msg.role === 'model') msg.role = 'assistant'
         if (msg.role === 'guidance') msg.role = 'assistant'
         return msg
       }),
-      stream: true,
-      tools: functions || undefined,
-      tool_choice: functions ? 'auto' : undefined
-    }, (chunk) => {
-      if (!chunk) {
-        chunkCb?.({ done: true, delta: '' })
-        return
-      }
-      const choice = chunk.choices[0]
-      if (choice.finish_reason) {
-        finishReason = choice.finish_reason
-      }
-      if (choice.message) {
-        completeMessage += choice.message.content
-      } else if (choice.delta) {
-        const delta = choice.delta
-        if (delta.tool_calls) {
-          for (const call of delta.tool_calls) {
-            fnCalls[call.index] ??= {
-              id: call.id,
-              name: '',
-              args: ''
-            }
-            const entry = fnCalls[call.index]
-            if (call.function.name) {
-              entry.name = call.function.name
-            }
-            if (call.function.arguments) {
-              entry.args += call.function.arguments
-            }
-          }
-        } else if (delta.content) {
-          completeMessage += delta.content
-          chunkCb?.(choice.delta)
-        }
-      } else throw new Error('Unknown chunk type')
+      {
+        apiKey: this.openaiApiKey,
+        functions,
+        generationConfig: { max_tokens: maxTokens, temperature, top_p: topP }
+      },
+      chunkCb
+    )
+    return response.choices.map((choice) => {
+      const choiceType = {
+        stop: 'text',
+        length: 'text',
+        function_call: 'function',
+        content_filter: 'safety', // an error would be thrown before this
+        tool_calls: 'function'
+      }[choice.finishReason] ?? 'unknown'
+      return { type: choiceType, isTruncated: choice.finishReason === 'length', ...choice }
     })
-    const type = finishReason === 'tool_calls' ? 'function' : 'text'
-    return { type, completeMessage, fnCalls }
   }
 
-  async _requestStreamingChatGemini (model, messages, maxTokens, functions, chunkCb) {
+  async _requestStreamingChatGemini (model, messages, { maxTokens, temperature, topP, topK }, functions, chunkCb) {
     if (!this.geminiApiKey) throw new Error('Gemini API key not set')
     const geminiMessages = messages.map((msg) => {
       const m = structuredClone(msg)
@@ -158,13 +148,14 @@ class CompletionService {
     })
     const response = await gemini.generateChatCompletionEx(model, geminiMessages, {
       apiKey: this.geminiApiKey,
-      functions
+      functions,
+      generationConfig: { maxOutputTokens: maxTokens, temperature, topP, topK }
     }, chunkCb)
     if (response.text()) {
       const answer = response.text()
       chunkCb?.({ done: true, delta: '' })
-      const result = { type: 'text', completeMessage: answer }
-      return result
+      const result = { type: 'text', content: answer }
+      return [result]
     } else if (response.functionCalls()) {
       const calls = response.functionCalls()
       const fnCalls = {}
@@ -177,17 +168,17 @@ class CompletionService {
         }
       }
       const result = { type: 'function', fnCalls }
-      return result
+      return [result]
     } else {
       throw new Error('Unknown response from Gemini')
     }
   }
 
-  async requestStreamingChat (model, { messages, maxTokens, functions }, chunkCb) {
+  async requestChatCompletion (model, { messages, maxTokens, functions }, chunkCb) {
     const { family } = getModelInfo(model)
     switch (family) {
-      case 'openai': return this._requestStreamingChatOpenAI(model, messages, maxTokens, functions, chunkCb)
-      case 'gemini': return this._requestStreamingChatGemini(model, messages, maxTokens, functions, chunkCb)
+      case 'openai': return this._requestStreamingChatOpenAI(model, messages, { ...this.defaultGenerationOptions, maxTokens }, functions, chunkCb)
+      case 'gemini': return this._requestStreamingChatGemini(model, messages, { ...this.defaultGenerationOptions, maxTokens }, functions, chunkCb)
       default:
         throw new Error(`Model '${model}' not supported for streaming chat, available models: ${knownModels.join(', ')}`)
     }

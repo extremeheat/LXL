@@ -1,45 +1,83 @@
 const OpenAI = require('openai')
 const https = require('https')
 const debug = require('debug')('lxl')
+const SafetyError = require('./SafetyError')
 
-async function generateCompletion (model, system, user, options = {}) {
-  const openai = new OpenAI(options)
-  const messages = [{ role: 'user', content: user }]
-  if (system) messages.unshift({ role: 'system', content: system })
-  if (options.guidanceMessage) messages.push({ role: 'assistant', content: options.guidanceMessage })
-  const completion = await openai.chat.completions.create({
-    messages,
-    model
-  })
-  const choice = completion.choices[0]
-  // console.log(completion.choices[0])
-  return choice
+function safetyCheck (choices) {
+  const hasSafetyFlag = choices.some((choice) => choice.finishReason === 'content_filter')
+  if (hasSafetyFlag) {
+    const okOnes = choices.filter((choice) => choice.finishReason !== 'content_filter')
+    if (okOnes.length) {
+      return okOnes
+    } else {
+      throw new SafetyError('Completions were blocked by OpenAI safety filter')
+    }
+  } else {
+    return choices
+  }
+}
+
+function createChunkProcessor (chunkCb, resultChoices) {
+  return function (chunk) {
+    if (!chunk) {
+      chunkCb?.({ done: true, delta: '' })
+      return
+    }
+    for (const choiceId in chunk.choices) {
+      const choice = chunk.choices[choiceId]
+      const resultChoice = resultChoices[choiceId] ??= { content: '', fnCalls: [], finishReason: '', safetyRatings: {} }
+      if (choice.finish_reason) {
+        resultChoice.finishReason = choice.finish_reason
+      }
+      if (choice.message) {
+        resultChoice.content += choice.message.content
+      } else if (choice.delta) {
+        const delta = choice.delta
+        if (delta.tool_calls) {
+          for (const call of delta.tool_calls) {
+            resultChoice.fnCalls[call.index] ??= {
+              id: call.id,
+              name: '',
+              args: ''
+            }
+            const entry = resultChoice.fnCalls[call.index]
+            if (call.function.name) {
+              entry.name = call.function.name
+            }
+            if (call.function.arguments) {
+              entry.args += call.function.arguments
+            }
+          }
+        } else if (delta.content) {
+          resultChoice.content += delta.content
+          chunkCb?.(choice.delta, choiceId)
+        }
+      } else throw new Error('Unknown chunk type')
+    }
+  }
 }
 
 // With OpenAI's Node.js SDK
-async function streamingChatCompletion (model, messages, options, chunkCb) {
+async function generateChatCompletionEx (model, messages, options, chunkCb) {
   const openai = new OpenAI(options)
-  const completion = openai.chat.completions.create({
+  const completion = await openai.chat.completions.create({
     model,
     messages,
     stream: true,
-    ...options
+    tools: options.functions || undefined,
+    tool_choice: options.functions ? 'auto' : undefined,
+    ...options.generationConfig
   })
-  let buffer = ''
+  const resultChoices = []
+  const handler = createChunkProcessor(chunkCb, resultChoices)
   for await (const chunk of completion) {
-    const choice = chunk.choices[0]
-    if (choice.delta?.content) {
-      buffer += choice.delta.content
-      chunkCb(choice.delta)
-    } else if (choice.message?.content) {
-      buffer += choice.message.content
-    }
+    handler(chunk)
   }
-  return buffer
+  return { choices: safetyCheck(resultChoices) }
 }
 
-// Over REST
-function getStreamingCompletion (apiKey, payload, completionCb) {
+// Directly use the OpenAI REST API
+function _sendApiRequest (apiKey, payload, chunkCb) {
   const chunkPrefixLen = 'data: '.length
   const options = {
     hostname: 'api.openai.com',
@@ -54,11 +92,12 @@ function getStreamingCompletion (apiKey, payload, completionCb) {
       Authorization: 'Bearer ' + apiKey
     }
   }
-  debug('OpenAI /completions Payload', JSON.stringify(payload))
+  debug('[OpenAI] /completions Payload', JSON.stringify(payload))
   return new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
       if (res.statusCode !== 200) {
-        console.error(`Server returned status code ${res.statusCode}`, res.statusMessage, res.headers)
+        debug(`[OpenAI] Server returned status code ${res.statusCode}`, res.statusMessage, res.headers)
+        reject(new Error(`Server returned status code ${res.statusCode} ${res.statusMessage}`))
         return
       }
       res.setEncoding('utf-8')
@@ -72,10 +111,10 @@ function getStreamingCompletion (apiKey, payload, completionCb) {
 
           for (const line of lines) {
             if (line === 'data: [DONE]') {
-              completionCb(null)
+              chunkCb(null)
               resolve()
             } else if (line.startsWith('data: ')) {
-              completionCb(JSON.parse(line.slice(chunkPrefixLen)))
+              chunkCb(JSON.parse(line.slice(chunkPrefixLen)))
             }
           }
         })
@@ -84,7 +123,7 @@ function getStreamingCompletion (apiKey, payload, completionCb) {
           buffer += chunk
         })
         res.on('end', () => {
-          completionCb(JSON.parse(buffer))
+          chunkCb(JSON.parse(buffer))
           resolve()
         })
       }
@@ -98,10 +137,45 @@ function getStreamingCompletion (apiKey, payload, completionCb) {
   })
 }
 
+async function generateChatCompletionIn (model, messages, options, chunkCb) {
+  const resultChoices = []
+  await _sendApiRequest(options.apiKey, {
+    model,
+    ...options.generationConfig,
+    messages,
+    stream: true,
+    tools: options.functions || undefined,
+    tool_choice: options.functions ? 'auto' : undefined
+  }, createChunkProcessor(chunkCb, resultChoices))
+  debug('[OpenAI] generateChatCompletionIn result', JSON.stringify(resultChoices))
+  return { choices: safetyCheck(resultChoices) }
+}
+
+async function generateCompletion (model, system, user, options = {}) {
+  const messages = [{ role: 'user', content: user }]
+  if (system) messages.unshift({ role: 'system', content: system })
+  if (options.guidanceMessage) messages.push({ role: 'assistant', content: options.guidanceMessage })
+  const completion = await generateChatCompletionIn(model, messages, options)
+  debug('[OpenAI] Completion', JSON.stringify(completion))
+  return completion
+}
+
 async function listModels (apiKey) {
   const openai = new OpenAI({ apiKey })
   const list = await openai.models.list()
   return list.body.data
 }
 
-module.exports = { generateCompletion, getStreamingCompletion, streamingChatCompletion, listModels }
+module.exports = { generateCompletion, generateChatCompletionEx, generateChatCompletionIn, listModels }
+
+/*
+via https://platform.openai.com/docs/guides/text-generation/chat-completions-api
+
+Every response will include a finish_reason. The possible values for finish_reason are:
+
+stop: API returned complete message, or a message terminated by one of the stop sequences provided via the stop parameter
+length: Incomplete model output due to max_tokens parameter or token limit
+function_call: The model decided to call a function
+content_filter: Omitted content due to a flag from our content filters
+null: API response still in progress or incomplete
+*/

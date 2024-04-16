@@ -16,7 +16,7 @@ function mod () {
   let serverPromise
   let wss
 
-  let throttleTime = 6000
+  let throttleTime = 10000
   let throttle, isBusy
 
   // 1. Run a local server that a local AI Studio client can connect to
@@ -202,13 +202,13 @@ function mod () {
       debug('Function call', fnName, fnArgs)
       return {
         type: 'function',
-        text: modelComment,
+        content: modelComment,
         fnCalls: [{ name: fnName, args: fnArgs }]
       }
     } else {
       return {
         type: 'text',
-        text: result
+        content: result
       }
     }
   }

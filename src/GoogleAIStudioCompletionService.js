@@ -40,7 +40,7 @@ class GoogleAIStudioCompletionService {
       if (cachedResponse) {
         chunkCb?.({ done: false, delta: cachedResponse.text })
         chunkCb?.({ done: true, delta: '' })
-        return cachedResponse
+        return [cachedResponse]
       }
     }
 
@@ -83,15 +83,16 @@ class GoogleAIStudioCompletionService {
       }
     }
     chunkCb?.({ done: true, delta: '\n' })
-    return saveIfCaching({ text: guidance + combinedResult })
+    return [saveIfCaching({ text: guidance + combinedResult })]
   }
 
-  async requestStreamingChat (model, { messages, maxTokens, functions }, chunkCb) {
+  async requestChatCompletion (model, { messages, maxTokens, functions }, chunkCb) {
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
     const result = await this._studio.requestChatCompletion(model, messages, chunkCb, { maxTokens, functions })
-    return { ...result, completeMessage: result.text }
+    chunkCb?.({ done: true, delta: '\n' })
+    return [result]
   }
 }
 
