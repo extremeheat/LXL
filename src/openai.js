@@ -50,7 +50,7 @@ function createChunkProcessor (chunkCb, resultChoices) {
           }
         } else if (delta.content) {
           resultChoice.content += delta.content
-          chunkCb?.(choice.delta)
+          chunkCb?.(choice.delta, choiceId)
         }
       } else throw new Error('Unknown chunk type')
     }

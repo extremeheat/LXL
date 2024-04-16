@@ -16,7 +16,7 @@ function mod () {
   let serverPromise
   let wss
 
-  let throttleTime = 6000
+  let throttleTime = 10000
   let throttle, isBusy
 
   // 1. Run a local server that a local AI Studio client can connect to
