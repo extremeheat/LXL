@@ -42,7 +42,7 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
   const stream = await generator.generateContentStream(payload)
   for await (const result of stream.stream) {
     debug('Chunk', result.text())
-    chunkCb({ content: result.text(), done: false, raw: result })
+    chunkCb?.({ content: result.text(), done: false, raw: result })
   }
   const response = await stream.response
   debug('Gemini Response', [response.text(), response.functionCalls()])
@@ -96,7 +96,6 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
         })
       }
     } else if (candidate.finishReason === 'SAFETY') {
-      // Function call
       throw new SafetyError(`Gemini completion candidate ${candidate.index} was blocked by safety filter: ${JSON.stringify(candidate.safetyRatings)}`)
     } else {
       throw new Error(`Gemini completion candidate ${candidate.index} failed with reason: ${candidate.finishReason}`)

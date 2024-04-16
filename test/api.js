@@ -2,6 +2,7 @@
 // @ts-check
 const { CompletionService, ChatSession, Func: { Arg, Desc }, loadPrompt } = require('langxlang')
 const fs = require('fs')
+const assert = require('assert')
 const openAIKey = fs.readFileSync('openai.key', 'utf8')
 const geminiKey = fs.readFileSync('gemini.key', 'utf8')
 const guidanceStr = `Please convert this YAML to JSON:
@@ -42,14 +43,16 @@ async function testGeminiCompletion (model = 'gemini-1.0-pro') {
 }
 
 async function testGuidance () {
-  console.log('Guidance:', guidanceStr)
+  // EXPECTED = '```json\n{\n  "name": "AI",\n  "age": 30\n}\n```'
   const q = loadPrompt(guidanceStr, {})
-  const result = await completionService.requestCompletion('gpt-3.5-turbo', '', q)
+  const [result] = await completionService.requestCompletion('gpt-3.5-turbo', '', q)
   console.log('GPT-3.5 result for', q)
   console.log(result)
-  const result2 = await completionService.requestCompletion('gemini-1.0-pro', '', q)
+  assert(result.text.trim().startsWith('```json\n') && result.text.trim().endsWith('```'), 'Guidance not followed by GPT-3.5')
+  const [result2] = await completionService.requestCompletion('gemini-1.0-pro', '', q)
   console.log('Gemini result for', q)
   console.log(result2)
+  assert(result.text.trim().startsWith('```json\n') && result.text.trim().endsWith('```'), 'Guidance not followed by Gemini 1.0')
 }
 
 function toTerminal (chunk) {
