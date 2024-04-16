@@ -36,7 +36,7 @@ class CompletionService {
   async _requestCompletionOpenAI (model, system, user, { maxTokens, temperature, topP }, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
     const guidance = system?.guidanceText || user?.guidanceText || ''
-    const [result] = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
+    const response = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
       apiKey: this.openaiApiKey,
       guidanceMessage: guidance,
       generationConfig: {
@@ -45,7 +45,7 @@ class CompletionService {
         top_p: topP
       }
     })
-    return [{ text: guidance + result.content }]
+    return response.choices.map((choice) => ({ text: guidance + choice.content }))
   }
 
   async _requestCompletionGemini (model, system, user, { maxTokens, temperature, topP, topK }, chunkCb) {
@@ -106,7 +106,7 @@ class CompletionService {
 
   async _requestStreamingChatOpenAI (model, messages, { maxTokens, temperature, topP }, functions, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
-    const [choice] = await openai.generateChatCompletionIn(
+    const response = await openai.generateChatCompletionIn(
       model,
       messages.map((entry) => {
         const msg = structuredClone(entry)
@@ -116,12 +116,21 @@ class CompletionService {
       }),
       {
         apiKey: this.openaiApiKey,
+        functions,
         generationConfig: { max_tokens: maxTokens, temperature, top_p: topP }
       },
       chunkCb
     )
-    const choiceType = choice.finishReason === 'function_call' ? 'function' : 'text'
-    return [{ type: choiceType, ...choice }] // ...{ content, fnCalls, finishReason }
+    return response.choices.map((choice) => {
+      const choiceType = {
+        stop: 'text',
+        length: 'text',
+        function_call: 'function',
+        content_filter: 'safety', // an error would be thrown before this
+        tool_calls: 'function'
+      }[choice.finishReason] ?? 'unknown'
+      return { type: choiceType, isTruncated: choice.finishReason === 'length', ...choice }
+    })
   }
 
   async _requestStreamingChatGemini (model, messages, { maxTokens, temperature, topP, topK }, functions, chunkCb) {

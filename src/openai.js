@@ -1,6 +1,21 @@
 const OpenAI = require('openai')
 const https = require('https')
 const debug = require('debug')('lxl')
+const SafetyError = require('./SafetyError')
+
+function safetyCheck (choices) {
+  const hasSafetyFlag = choices.some((choice) => choice.finishReason === 'content_filter')
+  if (hasSafetyFlag) {
+    const okOnes = choices.filter((choice) => choice.finishReason !== 'content_filter')
+    if (okOnes.length) {
+      return okOnes
+    } else {
+      throw new SafetyError('Completions were blocked by OpenAI safety filter')
+    }
+  } else {
+    return choices
+  }
+}
 
 function createChunkProcessor (chunkCb, resultChoices) {
   return function (chunk) {
@@ -10,7 +25,7 @@ function createChunkProcessor (chunkCb, resultChoices) {
     }
     for (const choiceId in chunk.choices) {
       const choice = chunk.choices[choiceId]
-      const resultChoice = resultChoices[choiceId] ??= { content: '', fnCalls: [], finishReason: '' }
+      const resultChoice = resultChoices[choiceId] ??= { content: '', fnCalls: [], finishReason: '', safetyRatings: {} }
       if (choice.finish_reason) {
         resultChoice.finishReason = choice.finish_reason
       }
@@ -58,7 +73,7 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
   for await (const chunk of completion) {
     handler(chunk)
   }
-  return { choices: resultChoices }
+  return { choices: safetyCheck(resultChoices) }
 }
 
 // Directly use the OpenAI REST API
@@ -77,11 +92,11 @@ function _sendApiRequest (apiKey, payload, chunkCb) {
       Authorization: 'Bearer ' + apiKey
     }
   }
-  debug('OpenAI /completions Payload', JSON.stringify(payload))
+  debug('[OpenAI] /completions Payload', JSON.stringify(payload))
   return new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
       if (res.statusCode !== 200) {
-        debug(`Server returned status code ${res.statusCode}`, res.statusMessage, res.headers)
+        debug(`[OpenAI] Server returned status code ${res.statusCode}`, res.statusMessage, res.headers)
         reject(new Error(`Server returned status code ${res.statusCode} ${res.statusMessage}`))
         return
       }
@@ -132,7 +147,8 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
     tools: options.functions || undefined,
     tool_choice: options.functions ? 'auto' : undefined
   }, createChunkProcessor(chunkCb, resultChoices))
-  return { choices: resultChoices }
+  debug('[OpenAI] generateChatCompletionIn result', JSON.stringify(resultChoices))
+  return { choices: safetyCheck(resultChoices) }
 }
 
 async function generateCompletion (model, system, user, options = {}) {
@@ -140,9 +156,8 @@ async function generateCompletion (model, system, user, options = {}) {
   if (system) messages.unshift({ role: 'system', content: system })
   if (options.guidanceMessage) messages.push({ role: 'assistant', content: options.guidanceMessage })
   const completion = await generateChatCompletionIn(model, messages, options)
-  debug('OpenAI Completion', JSON.stringify(completion))
-  const choice = completion.choices[0]
-  return choice
+  debug('[OpenAI] Completion', JSON.stringify(completion))
+  return completion
 }
 
 async function listModels (apiKey) {

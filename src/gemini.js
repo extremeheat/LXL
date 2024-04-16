@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 const debug = require('debug')('lxl')
 const utils = require('./util')
+const SafetyError = require('./SafetyError')
 
 const defaultSafety = [
   { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
@@ -82,19 +83,21 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
         resultCandidates.push({
           type: 'function',
           fnCalls: candidate.content.functionCalls,
-          raw: data
+          raw: data,
+          safetyRatings: candidate.safetyRatings
         })
       } else {
         // Text response
         resultCandidates.push({
           type: 'text',
           text: () => candidate.content.parts.reduce((acc, part) => acc + part.text, ''),
-          raw: data
+          raw: data,
+          safetyRatings: candidate.safetyRatings
         })
       }
     } else if (candidate.finishReason === 'SAFETY') {
       // Function call
-      throw new Error(`Gemini completion candidate ${candidate.index} was blocked by safety filter: ${JSON.stringify(candidate.safetyRatings)}`)
+      throw new SafetyError(`Gemini completion candidate ${candidate.index} was blocked by safety filter: ${JSON.stringify(candidate.safetyRatings)}`)
     } else {
       throw new Error(`Gemini completion candidate ${candidate.index} failed with reason: ${candidate.finishReason}`)
     }
