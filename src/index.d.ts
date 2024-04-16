@@ -4,20 +4,29 @@ declare module 'langxlang' {
   type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro'
   type ChunkCb = ({ content: string }) => void
 
+  type CompletionOptions = {
+    maxTokens: number
+    temperature: number
+    topP: number
+    topK: number
+  }
+
   class CompletionService {
     // Creates an instance of completion service.
     // Note: as an alternative to explicitly passing the API keys in the constructor you can: 
     // * set the `OPENAI_API_KEY` and `GEMINI_API_KEY` environment variables.
     // * or, define the keys inside `/.local/share/lxl-cache.json` (linux), `~/Library/Application Support/lxl-cache.json` (mac), or `%appdata%\lxl-cache.json` (windows) with the structure
     // `{"keys": {"openai": "your-openai-key", "gemini": "your-gemini-key"}}`
-    constructor(apiKeys: { openai: string, gemini: string })
+    // In this options object, you can specify generation options that will be applied by default to
+    // all requestCompletion calls. You can override these options by passing them in the requestCompletion call.
+    constructor(apiKeys: { openai: string, gemini: string }, options?: { generationOptions: CompletionOptions })
 
     cachePath: string
 
     listModels(): Promise<{ openai: Record<string, object>, google: Record<string, object> }>
 
     // Request a non-streaming completion from the model.
-    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?, options?: {
+    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?, options?: CompletionOptions & {
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
     }): Promise<CompletionResponse[]>
@@ -41,7 +50,7 @@ declare module 'langxlang' {
     close(): void
 
     // Request a non-streaming completion from the model.
-    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, chunkCb?: ChunkCb, options?: {
+    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, chunkCb?: ChunkCb, options?: CompletionOptions & {
       autoFeed?: {
         // Once a line matching stopLine is hit, stop trying to feed the model more input
         stopLine: string,
