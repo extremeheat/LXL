@@ -139,6 +139,22 @@ async function testOpenAICaching () {
   console.log(result)
 }
 
+async function testOptions () {
+  const q = 'Hello! Why is the sky blue?'
+  console.log('OptionsTest>', q)
+  const [resultGpt] = await completionService.requestCompletion('gpt-3.5-turbo', '', 'Hello! Why is the sky blue?', null, {
+    maxTokens: 100,
+    temperature: 2
+  })
+  console.log('GPT-3.5 with maxTokens=100, temp=2', resultGpt)
+  console.log(resultGpt)
+  const [resultGemini] = await completionService.requestCompletion('gemini-1.0-pro', '', 'Hello! Why is the sky blue?', null, {
+    maxTokens: 100,
+    temperature: 2
+  })
+  console.log('Gemini 1.0 Pro with maxTokens=100, temp=2', resultGemini)
+}
+
 async function testBasic () {
   await testListing()
   await testOpenAICompletion()
@@ -151,6 +167,7 @@ async function testBasic () {
   await testGeminiSessionWithFuncs('gemini-1.0-pro')
   await testGeminiSessionWithFuncs('gemini-1.5-pro-latest')
   await testOpenAICaching()
+  await testOptions()
 
   console.log('All Good!')
 }

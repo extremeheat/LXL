@@ -7,6 +7,7 @@ const ChatSession = require('./ChatSession')
 const Flow = require('./Flow')
 const functions = require('./functions')
 const tools = require('./tools')
+const SafetyError = require('./SafetyError')
 
 module.exports = {
   appDataDir,
@@ -21,5 +22,6 @@ module.exports = {
   tools,
   importPromptSync: tools.importPromptSync,
   importPrompt: tools.importPrompt,
-  loadPrompt: tools.loadPrompt
+  loadPrompt: tools.loadPrompt,
+  SafetyError
 }

@@ -1,14 +1,14 @@
 type CompletionResponse = { text: string }
 
 declare module 'langxlang' {
-  type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro'
+  type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
   type ChunkCb = ({ content: string }) => void
 
   type CompletionOptions = {
-    maxTokens: number
-    temperature: number
-    topP: number
-    topK: number
+    maxTokens?: number
+    temperature?: number
+    topP?: number
+    topK?: number
   }
 
   class CompletionService {
@@ -183,6 +183,10 @@ declare module 'langxlang' {
     constructor(completionService: CompletionService, chain: RootFlowChain, options)
     run(parameters?: Record<string, any>): Promise<FlowRun>
     followUp(priorRun: FlowRun, name: string, parameters?: Record<string, any>): Promise<FlowRun>
+  }
+
+  export class SafetyError extends Error {
+    constructor(message: string)
   }
 }
 
