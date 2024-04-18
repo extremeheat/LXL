@@ -180,7 +180,7 @@ declare module 'langxlang' {
     lastFlow: SomeFlowChainObject
     lastRunParameters: Record<string, any>
 
-    constructor(completionService: CompletionService, chain: RootFlowChain, options)
+    constructor(completionService: CompletionService, chain: RootFlowChain, options: { model: Model })
     run(parameters?: Record<string, any>): Promise<FlowRun>
     followUp(priorRun: FlowRun, name: string, parameters?: Record<string, any>): Promise<FlowRun>
   }
@@ -192,6 +192,7 @@ declare module 'langxlang' {
 
 // FLOW
 interface FlowChainObjectBase {
+  model: Model
   prompt: string
   with: Record<string, string>
   followUps: Record<string, (resp: CompletionResponse, input: object) => SomeFlowChainObject>

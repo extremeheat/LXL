@@ -183,6 +183,9 @@ class CompletionService {
         throw new Error(`Model '${model}' not supported for streaming chat, available models: ${knownModels.join(', ')}`)
     }
   }
+
+  stop () {}
+  close () {}
 }
 
 module.exports = { appDataDir: caching.appDataDir, CompletionService }

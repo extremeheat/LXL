@@ -11,7 +11,7 @@ async function testCompletion () {
   // Use port 8095 to host the websocket server
   const service = new GoogleAIStudioCompletionService(8095)
   await service.ready
-  const response = await service.requestCompletion('gemini-1.5-pro', '', 'Why is the sky blue?')
+  const [response] = await service.requestCompletion('gemini-1.5-pro', '', 'Why is the sky blue?')
   console.log('Result', response.text)
 }
 

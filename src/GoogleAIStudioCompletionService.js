@@ -2,6 +2,9 @@ const caching = require('./caching')
 const studioLoader = require('./googleAIStudio')
 
 const supportedModels = ['gemini-1.0-pro', 'gemini-1.5-pro']
+const modelAliases = {
+  'gemini-1.5-pro-latest': 'gemini-1.5-pro'
+}
 
 function checkContainsStopTokenLine (message, token) {
   const lines = message.split('\n')
@@ -32,6 +35,7 @@ class GoogleAIStudioCompletionService {
   }
 
   async requestCompletion (model, system, user, chunkCb, options = {}) {
+    model = modelAliases[model] || model
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
@@ -87,6 +91,7 @@ class GoogleAIStudioCompletionService {
   }
 
   async requestChatCompletion (model, { messages, maxTokens, functions }, chunkCb) {
+    model = modelAliases[model] || model
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
