@@ -1,3 +1,12 @@
+## 0.6.0
+* [update types and model aliases](https://github.com/extremeheat/LXL/commit/069a0a2d7969328ffe2062234a54f58331905ddc) (thanks @extremeheat)
+* [Breaking changes to allow custom generation options and multi-completions (#28)](https://github.com/extremeheat/LXL/commit/2d836f2ad6e8cd177fc46b18f945725d9083ae50) (thanks @extremeheat)
+* [Support Gemini 1.5 Pro with Google AI Studio API (#27)](https://github.com/extremeheat/LXL/commit/73cdf1d0f079e8f2440765bef9d7484f0c76b5ba) (thanks @extremeheat)
+* [Bump @google/generative-ai from 0.5.0 to 0.6.0 (#26)](https://github.com/extremeheat/LXL/commit/f4b01f05ee0632181bf1eafc93b1ce9147866053) (thanks @dependabot[bot])
+* [Bump @google/generative-ai from 0.2.1 to 0.5.0 (#25)](https://github.com/extremeheat/LXL/commit/606d50bb1eed5f0fb1d4a037d0b4536d8c746c7d) (thanks @dependabot[bot])
+* [Add Flow for advanced prompt flows with templating (#23)](https://github.com/extremeheat/LXL/commit/03cf5261395fe619a325e008ad29ab406529eda8) (thanks @extremeheat)
+* [Add `stripDiff`, support truncation and binary files in collectFolderFiles and markdown gen, handle corrupt caches (#20)](https://github.com/extremeheat/LXL/commit/fe7a4a5871787fdbfd829d548852e588f5ec8ab9) (thanks @extremeheat)
+
 ## 0.5.1
 * [GoogleAIStudio: add option to send requests to HTTP server relay (#18)](https://github.com/extremeheat/LXL/commit/afb1d1e2344072967bbe092660793a213be751b0) (thanks @extremeheat)
 
