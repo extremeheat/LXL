@@ -12,10 +12,15 @@ const defaultSafety = [
 
 const rateLimits = {}
 
+async function waitForRateLimit (apiKey, model, customRateLimit) {
+  const rateLimit = customRateLimit ?? utils.getRateLimit(model)
+  rateLimits[apiKey] ??= {}
+  await rateLimits[apiKey][model]
+  rateLimits[apiKey][model] = utils.sleep(rateLimit)
+}
+
 async function generateChatCompletionEx (model, messages, options, chunkCb) {
-  rateLimits[options.apiKey] ??= {}
-  await rateLimits[options.apiKey][model]
-  rateLimits[options.apiKey][model] = utils.sleep(options.rateLimit ?? utils.getRateLimit(model))
+  await waitForRateLimit(options.apiKey, model, options.rateLimit)
   const google = new GoogleGenerativeAI(options.apiKey)
   const generator = google.getGenerativeModel({ model }, { apiVersion: 'v1beta' })
   // contents: Content[];
@@ -52,6 +57,7 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
 // We now use the Google NPM package, but this method is helpful for understanding/debugging. It doesn't support function calling or streaming.
 async function generateChatCompletionIn (model, messages, options, chunkCb) {
   const apiKey = options.apiKey
+  await waitForRateLimit(options.apiKey, model, options.rateLimit)
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
   const systemMessage = messages.find(m => m.role === 'system')
   const payload = {

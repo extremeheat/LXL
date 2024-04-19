@@ -61,6 +61,7 @@ class CompletionService {
       apiKey: this.geminiApiKey,
       generationConfig: { maxOutputTokens: maxTokens, temperature, topP, topK }
     }, chunkCb)
+    chunkCb?.({ done: true, delta: '' })
     return [{ text: guidance + result.text() }]
   }
 
