@@ -6,6 +6,7 @@ declare module 'langxlang' {
 
   type CompletionOptions = {
     maxTokens?: number
+    stopSequences?: string[]
     temperature?: number
     topP?: number
     topK?: number
