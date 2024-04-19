@@ -62,7 +62,11 @@ function toTerminal (chunk) {
 }
 
 async function testSession () {
-  const session = new ChatSession(completionService, 'gpt-3.5-turbo', '')
+  const session = new ChatSession(completionService, 'gpt-3.5-turbo', '', {
+    generationOptions: {
+      temperature: 1
+    }
+  })
   const q = 'Hello! Why is the sky blue?'
   console.log('> ', q)
   const message = await session.sendMessage(q, toTerminal)
@@ -144,12 +148,14 @@ async function testOptions () {
   console.log('OptionsTest>', q)
   const [resultGpt] = await completionService.requestCompletion('gpt-3.5-turbo', '', 'Hello! Why is the sky blue?', null, {
     maxTokens: 100,
+    stopSequences: ['<SYSTEM>'],
     temperature: 2
   })
   console.log('GPT-3.5 with maxTokens=100, temp=2', resultGpt)
   console.log(resultGpt)
   const [resultGemini] = await completionService.requestCompletion('gemini-1.0-pro', '', 'Hello! Why is the sky blue?', null, {
     maxTokens: 100,
+    stopSequences: ['<SYSTEM>'],
     temperature: 2
   })
   console.log('Gemini 1.0 Pro with maxTokens=100, temp=2', resultGemini)

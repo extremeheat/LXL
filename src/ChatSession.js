@@ -7,7 +7,8 @@ class ChatSession {
   constructor (completionService, model, systemMessage, options = {}) {
     this.service = completionService
     this.model = model
-    this.maxTokens = options.maxTokens
+    this.generationOptions = options.generationOptions
+    if (options.maxTokens) this.generationOptions.maxTokens = options.maxTokens
     systemMessage = cleanMessage(systemMessage)
     this.messages = []
     if (systemMessage) this.messages.push({ role: 'system', content: systemMessage })
@@ -126,10 +127,10 @@ class ChatSession {
     this.messages[0].content = systemMessage
   }
 
-  async _submitRequest (chunkCb) {
+  async _submitRequest (genOptions, chunkCb) {
     debug('Sending to', this.model, this.messages)
     const [response] = await this.service.requestChatCompletion(this.model, {
-      maxTokens: this.maxTokens,
+      generationOptions: { ...this.generationOptions, ...genOptions },
       messages: this.messages,
       functions: this.functionsPayload
     }, chunkCb)
@@ -145,14 +146,14 @@ class ChatSession {
         const args = (typeof call.args === 'string' && call.args.length) ? JSON.parse(call.args) : call.args
         await this._callFunction(call.name, args ?? {}, response)
       }
-      return this._submitRequest(chunkCb)
+      return this._submitRequest(genOptions, chunkCb)
     } else if (response.type === 'text') {
       this.messages.push({ role: 'assistant', content: response.content })
     }
     return response
   }
 
-  async sendMessage (message, chunkCb) {
+  async sendMessage (message, chunkCb, options) {
     await this.loading
     const content = message.basePrompt ?? message.valueOf()
     this.messages.push({ role: 'user', content })
@@ -163,7 +164,7 @@ class ChatSession {
       chunkCb?.({ done: false, delta: message.guidanceText, content: message.guidanceText })
     }
     this._calledFunctionsForRound = []
-    const response = await this._submitRequest(chunkCb)
+    const response = await this._submitRequest(options, chunkCb)
     if (message.guidanceText) {
       // update the current model output with the guidance message
       const last = this.messages[this.messages.length - 1]

@@ -190,11 +190,11 @@ class CompletionService {
     }
   }
 
-  async requestChatCompletion (model, { messages, functions, maxTokens }, chunkCb) {
+  async requestChatCompletion (model, { messages, functions, generationOptions }, chunkCb) {
     const { family } = getModelInfo(model)
     switch (family) {
-      case 'openai': return this._requestStreamingChatOpenAI(model, messages, { ...this.defaultGenerationOptions, maxTokens }, functions, chunkCb)
-      case 'gemini': return this._requestStreamingChatGemini(model, messages, { ...this.defaultGenerationOptions, maxTokens }, functions, chunkCb)
+      case 'openai': return this._requestStreamingChatOpenAI(model, messages, { ...this.defaultGenerationOptions, ...generationOptions }, functions, chunkCb)
+      case 'gemini': return this._requestStreamingChatGemini(model, messages, { ...this.defaultGenerationOptions, ...generationOptions }, functions, chunkCb)
       default:
         throw new Error(`Model '${model}' not supported for streaming chat, available models: ${knownModels.join(', ')}`)
     }

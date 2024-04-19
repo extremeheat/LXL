@@ -79,10 +79,10 @@ declare module 'langxlang' {
   class ChatSession<T extends any[]> {
     // ChatSession is for back and forth conversation between a user an an LLM.
     constructor(completionService: SomeCompletionService, model: Model, systemPrompt?: string)
-    constructor(completionService: SomeCompletionService, model: Model, systemPrompt?: string, options?: { functions?: Functions<T> })
+    constructor(completionService: SomeCompletionService, model: Model, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
-    sendMessage(userMessage: string, chunkCallback?: ChunkCb): Promise<string>
+    sendMessage(userMessage: string, chunkCallback?: ChunkCb, generationOptions?: CompletionOptions): Promise<string>
   }
 
   type StripOptions = {
