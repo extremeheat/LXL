@@ -1,3 +1,29 @@
+## 0.6.0
+### Breaking
+
+* CompletionService and GoogleAIStudioCompletionService
+  * `.requestCompletion` now returns an array of completions
+
+### Features
+* `.requestCompletion`'s options objects now also take in the following options, which will be passed to the model's generation options:
+```coffee
+    maxTokens: number
+    temperature: number
+    topP: number
+    topK: number
+```
+* The constructors for CompletionService and GoogleAIStudioCompletionService have also been updated to take an additional objects object. These the object can contain a `generationOptions` dictionary that will be applied by default to all requestCompletion calls. You can override these options by passing them in individual requestCompletion calls.
+* Export a `SafetyError` object that can be used in instanceof checks to see if a model response failed due content filtering rules.
+
+#### Flow
+Added Flow, a class for building dialogues, see [docs/flow.md](https://github.com/extremeheat/LXL/blob/main/docs/flow.md).
+
+### Changelog
+* [Breaking changes to allow custom generation options and multi-completions (#28)](https://github.com/extremeheat/LXL/commit/2d836f2ad6e8cd177fc46b18f945725d9083ae50) (thanks @extremeheat)
+* [Support Gemini 1.5 Pro with Google AI Studio API (#27)](https://github.com/extremeheat/LXL/commit/73cdf1d0f079e8f2440765bef9d7484f0c76b5ba) (thanks @extremeheat)
+* [Add Flow for advanced prompt flows with templating (#23)](https://github.com/extremeheat/LXL/commit/03cf5261395fe619a325e008ad29ab406529eda8) (thanks @extremeheat)
+* [Add `stripDiff`, support truncation and binary files in collectFolderFiles and markdown gen, handle corrupt caches (#20)](https://github.com/extremeheat/LXL/commit/fe7a4a5871787fdbfd829d548852e588f5ec8ab9) (thanks @extremeheat)
+
 ## 0.5.1
 * [GoogleAIStudio: add option to send requests to HTTP server relay (#18)](https://github.com/extremeheat/LXL/commit/afb1d1e2344072967bbe092660793a213be751b0) (thanks @extremeheat)
 
