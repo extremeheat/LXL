@@ -7,7 +7,7 @@ const service = new CompletionService()
 console.log('Using cache in', service.cachePath)
 
 async function main () {
-  const session = new ChatSession(service, 'gpt-3.5-turbo-16k', 'Hello', 'How are you?')
+  const session = new ChatSession(service, 'gpt-3.5-turbo-16k', /* system prompt */ 'Talk like a pirate')
   const q = 'Why is the sky blue?'
   console.log('User:', q)
   await session.sendMessage(q, ({ content }) => { process.stdout.write(content) })

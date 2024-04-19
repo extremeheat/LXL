@@ -1,4 +1,4 @@
-const { CompletionService, ChatSession, Func: { Arg, Desc } } = require('../src')
+const { CompletionService, ChatSession, Func: { Arg, Desc } } = require('langxlang')
 
 // Note: you can either define an object here with the keys 'openai' and 'gemini' or you can set the OPENAI_API_KEY and GEMINI_API_KEY environment variables
 // const service = new CompletionService({ openai: 'YOUR OPENAI API' })
