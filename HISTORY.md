@@ -1,3 +1,7 @@
+### 0.6.1
+* [Bump @google/generative-ai from 0.6.0 to 0.7.1 (#30)](https://github.com/extremeheat/LXL/commit/7e0389feac29fd6bb4505cd780166e6be65b1e91) (thanks @dependabot[bot])
+* [Fix Gemini completions not emitting stop chunk](https://github.com/extremeheat/LXL/commit/f44f5641e58154dc6fb1cd3cfc45fb6da3e033a6) (thanks @extremeheat)
+
 ## 0.6.0
 ### Breaking
 
