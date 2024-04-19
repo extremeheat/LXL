@@ -1,5 +1,6 @@
 const codebase = require('./tools/codebase')
 const viz = require('./tools/viz')
+const xml = require('./tools/xml')
 const yaml = require('./tools/yaml')
 const stripping = require('./tools/stripping')
 const { wrapContentWithSufficientTokens, importPromptRaw, importPromptSync, importPrompt, loadPrompt, preMarkdown } = require('./tools/mdp')
@@ -55,5 +56,6 @@ module.exports = {
   importRawSync: importPromptRaw,
   importPromptSync,
   importPrompt,
-  encodeYAML: yaml.encodeYaml
+  encodeYAML: yaml.encodeYaml,
+  decodeXML: xml.decodeXML
 }
