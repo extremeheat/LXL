@@ -198,7 +198,9 @@ declare module 'langxlang' {
 // FLOW
 interface FlowChainObjectBase {
   model: Model
-  prompt: string
+  prompt:
+    | { system: string, user: string }
+    | { text: string, roles: Record<string, Role> }
   with: Record<string, string>
   followUps: Record<string, (resp: CompletionResponse, input: object) => SomeFlowChainObject>
   // The function that transforms the response from the model before it's passed to the followUps/next or returned

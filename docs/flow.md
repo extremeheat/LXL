@@ -45,7 +45,14 @@ We can construct the following chain to:
 
 ```js
 const chain = (params) => ({
-  prompt: importRawSync('./prompt.md'),
+  prompt: {
+    // if we're using a prompt file with roles, we use specify `text` and `roles`. Otherwise, we can specify `user` and `system` as below.
+    text: importRawSync('./prompt.md'),
+    roles: {
+      '<USER>': 'user',
+      '<ASSISTANT>': 'assistant'
+    }
+  }
   with: {
     DAY_OF_WEEK: params.dayOfWeek
   },
@@ -95,7 +102,12 @@ A chain looks like this:
 ```js
 function chain (initialArguments) {
   return {
-    prompt: 'the prompt here',
+    prompt: {
+      // the system and user prompt will be propagated down the chain but you can override them at any point
+      // by specifying them in another `prompt` object
+      system: 'the system prompt here',
+      user: 'the user prompt here'
+    }
     // the with section contains the parameters to pass, like tools.loadPrompt(prompt, with)
     with: {
       SOME_PARAM: 'value'
@@ -118,7 +130,9 @@ and should return a string. The string will be used to find the next function to
 
 ```js
 const chain = (params) => ({
-  prompt: 'the prompt here',
+  prompt: {
+    user: 'the prompt here',
+  }
   with: {
     SOME_PARAM: 'value'
   },
