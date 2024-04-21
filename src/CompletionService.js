@@ -33,7 +33,7 @@ class CompletionService {
     return { openai: openaiModels, google: geminiModels }
   }
 
-  async _requestCompletionOpenAI (model, system, user, { maxTokens, temperature, topP }, chunkCb) {
+  async _requestCompletionOpenAI (model, system, user, { maxTokens, stopSequences, temperature, topP }, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
     const guidance = system?.guidanceText || user?.guidanceText || ''
     const response = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
@@ -41,6 +41,7 @@ class CompletionService {
       guidanceMessage: guidance,
       generationConfig: {
         max_tokens: maxTokens,
+        stop: stopSequences,
         temperature,
         top_p: topP
       }
@@ -48,7 +49,7 @@ class CompletionService {
     return response.choices.map((choice) => ({ text: guidance + choice.content }))
   }
 
-  async _requestCompletionGemini (model, system, user, { maxTokens, temperature, topP, topK }, chunkCb) {
+  async _requestCompletionGemini (model, system, user, { maxTokens, stopSequences, temperature, topP, topK }, chunkCb) {
     if (!this.geminiApiKey) throw new Error('Gemini API key not set')
     const guidance = system?.guidanceText || user?.guidanceText || ''
     // April 2024 - Only Gemini 1.5 supports instructions
@@ -59,7 +60,13 @@ class CompletionService {
     }
     const result = await gemini.generateCompletion(model, system, user, {
       apiKey: this.geminiApiKey,
-      generationConfig: { maxOutputTokens: maxTokens, temperature, topP, topK }
+      generationConfig: {
+        maxOutputTokens: maxTokens,
+        stopSequences,
+        temperature,
+        topP,
+        topK
+      }
     }, chunkCb)
     chunkCb?.({ done: true, delta: '' })
     return [{ text: guidance + result.text() }]
@@ -86,10 +93,7 @@ class CompletionService {
     }
     const genOpts = {
       ...this.defaultGenerationOptions,
-      maxTokens: options.maxTokens,
-      temperature: options.temperature,
-      topP: options.topP,
-      topK: options.topK
+      ...options
     }
     const { family } = getModelInfo(model)
     switch (family) {
@@ -105,7 +109,7 @@ class CompletionService {
     }
   }
 
-  async _requestStreamingChatOpenAI (model, messages, { maxTokens, temperature, topP }, functions, chunkCb) {
+  async _requestStreamingChatOpenAI (model, messages, { maxTokens, stopSequences, temperature, topP }, functions, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
     const response = await openai.generateChatCompletionIn(
       model,
@@ -118,7 +122,12 @@ class CompletionService {
       {
         apiKey: this.openaiApiKey,
         functions,
-        generationConfig: { max_tokens: maxTokens, temperature, top_p: topP }
+        generationConfig: {
+          max_tokens: maxTokens,
+          stop: stopSequences,
+          temperature,
+          top_p: topP
+        }
       },
       chunkCb
     )
@@ -134,7 +143,7 @@ class CompletionService {
     })
   }
 
-  async _requestStreamingChatGemini (model, messages, { maxTokens, temperature, topP, topK }, functions, chunkCb) {
+  async _requestStreamingChatGemini (model, messages, { maxTokens, stopSequences, temperature, topP, topK }, functions, chunkCb) {
     if (!this.geminiApiKey) throw new Error('Gemini API key not set')
     const geminiMessages = messages.map((msg) => {
       const m = structuredClone(msg)
@@ -150,7 +159,13 @@ class CompletionService {
     const response = await gemini.generateChatCompletionEx(model, geminiMessages, {
       apiKey: this.geminiApiKey,
       functions,
-      generationConfig: { maxOutputTokens: maxTokens, temperature, topP, topK }
+      generationConfig: {
+        maxOutputTokens: maxTokens,
+        stopSequences,
+        temperature,
+        topP,
+        topK
+      }
     }, chunkCb)
     if (response.text()) {
       const answer = response.text()
@@ -175,11 +190,11 @@ class CompletionService {
     }
   }
 
-  async requestChatCompletion (model, { messages, maxTokens, functions }, chunkCb) {
+  async requestChatCompletion (model, { messages, functions, generationOptions }, chunkCb) {
     const { family } = getModelInfo(model)
     switch (family) {
-      case 'openai': return this._requestStreamingChatOpenAI(model, messages, { ...this.defaultGenerationOptions, maxTokens }, functions, chunkCb)
-      case 'gemini': return this._requestStreamingChatGemini(model, messages, { ...this.defaultGenerationOptions, maxTokens }, functions, chunkCb)
+      case 'openai': return this._requestStreamingChatOpenAI(model, messages, { ...this.defaultGenerationOptions, ...generationOptions }, functions, chunkCb)
+      case 'gemini': return this._requestStreamingChatGemini(model, messages, { ...this.defaultGenerationOptions, ...generationOptions }, functions, chunkCb)
       default:
         throw new Error(`Model '${model}' not supported for streaming chat, available models: ${knownModels.join(', ')}`)
     }

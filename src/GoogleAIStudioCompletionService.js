@@ -90,12 +90,12 @@ class GoogleAIStudioCompletionService {
     return [saveIfCaching({ text: guidance + combinedResult })]
   }
 
-  async requestChatCompletion (model, { messages, maxTokens, functions }, chunkCb) {
+  async requestChatCompletion (model, { messages, functions, generationOptions }, chunkCb) {
     model = modelAliases[model] || model
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
-    const result = await this._studio.requestChatCompletion(model, messages, chunkCb, { maxTokens, functions })
+    const result = await this._studio.requestChatCompletion(model, messages, chunkCb, { ...generationOptions, functions })
     chunkCb?.({ done: true, delta: '\n' })
     return [result]
   }
