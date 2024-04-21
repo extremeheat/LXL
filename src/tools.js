@@ -56,6 +56,7 @@ module.exports = {
   importRawSync: mdp.importPromptRaw,
   importPromptSync: mdp.importPromptSync,
   importPrompt: mdp.importPrompt,
+  _segmentPromptByRoles: mdp.segmentByRoles,
   encodeYAML: yaml.encodeYaml,
   decodeXML: xml.decodeXML
 }

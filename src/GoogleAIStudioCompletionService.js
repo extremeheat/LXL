@@ -48,7 +48,6 @@ class GoogleAIStudioCompletionService {
         return [cachedResponse]
       }
     }
-
     function saveIfCaching (response) {
       if (response && response.text && options.enableCaching) {
         caching.addResponseToCache(model, [system, user], response)
@@ -56,8 +55,10 @@ class GoogleAIStudioCompletionService {
       return response
     }
 
-    const mergedPrompt = [system, user].join('\n')
-    const messages = [{ role: 'user', content: mergedPrompt }]
+    const messages = [{ role: 'user', content: user }]
+    if (system) {
+      messages.unshift({ role: 'system', content: system })
+    }
     const result = await this._studio.generateCompletion(model, messages, chunkCb)
     let combinedResult = result.text
     if (options.autoFeed) {
@@ -90,9 +91,8 @@ class GoogleAIStudioCompletionService {
 
   async requestChatCompletion (model, { messages, functions, generationOptions }, chunkCb) {
     model = modelAliases[model] || model
-    if (!supportedModels.includes(model)) {
-      throw new Error(`Model ${model} is not supported`)
-    }
+    if (!supportedModels.includes(model)) throw new Error(`Model ${model} is not supported`)
+
     const guidance = util.checkGuidance(messages, chunkCb)
     const result = await this._studio.requestChatCompletion(model, messages, chunkCb, { ...generationOptions, functions })
     chunkCb?.({ done: true, delta: '\n' })

@@ -27,6 +27,7 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
   // tools?: Tool[];
   // toolConfig?: ToolConfig;
   // systemInstruction?: Content;
+  messages = mergeDuplicatedRoleMessages(messages)
   const systemMessage = messages.find(m => m.role === 'system')
   const payload = {
     contents: messages.filter(m => m.role !== 'system'),
@@ -128,6 +129,21 @@ async function listModels (apiKey) {
     method: 'GET'
   }).then(res => res.json())
   return response.models
+}
+
+function mergeDuplicatedRoleMessages (messages) {
+  // if there are 2 messages with the same role, merge them with a newline.
+  // Not doing this can return `GoogleGenerativeAIError: [400 Bad Request] Please ensure that multiturn requests ends with a user role or a function response.`
+  const mergedMessages = []
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i]
+    if (i > 0 && message.role === messages[i - 1].role) {
+      mergedMessages[mergedMessages.length - 1].parts.push({ text: message.parts[0].text })
+    } else {
+      mergedMessages.push(message)
+    }
+  }
+  return mergedMessages
 }
 
 module.exports = { generateChatCompletionEx, generateChatCompletionIn, generateCompletion, listModels }

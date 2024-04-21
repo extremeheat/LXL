@@ -32,7 +32,7 @@ describe('Basic tests', () => {
 
   it('mdp role processing', function () {
     const prompt = tools.importRawSync('./testPromptRoles.md')
-    const messages = tools.segmentPromptByRoles(prompt, {
+    const messages = tools._segmentPromptByRoles(prompt, {
       '<|SYSTEM|>': 'system',
       '<|USER|>': 'user',
       '<|ASSISTANT|>': 'assistant'

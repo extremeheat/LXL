@@ -16,7 +16,7 @@ function mod () {
   let serverPromise
   let wss
 
-  let throttleTime = 17000 // 15s + 2s safety margin
+  let throttleTime = 16000
   let throttle, isBusy
 
   // 1. Run a local server that a local AI Studio client can connect to
@@ -109,7 +109,6 @@ function mod () {
   async function generateCompletion (model, messages, chunkCb, options) {
     await runServer()
     await throttle
-    throttle = sleep(throttleTime)
     if (isBusy) {
       throw new Error('Only one request at a time is supported with AI Studio, please wait for the previous request to finish')
     }
@@ -127,6 +126,7 @@ function mod () {
     }
     serverConnection.off('completionChunk', completionChunk)
     // If the user is using streaming, they won't face any delay getting the response
+    throttle = sleep(throttleTime)
     await throttle
     isBusy = false
     return {
