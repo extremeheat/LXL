@@ -72,14 +72,13 @@ class ChatSession {
   // This calls a function and adds the reponse to the context so the model can be called again
   async _callFunction (functionName, payload, metadata) {
     if (this.modelAuthor === 'googleaistudio') {
+      let content = ''
       if (metadata.content) {
-        let content = ''
-        content = metadata.content + '\n'
-        content = content.trim()
-        const arStr = Object.keys(payload).length ? JSON.stringify(payload) : ''
-        content += `\n<FUNCTION_CALL>${functionName}(${arStr})</FUNCTION_CALL>`
-        this.messages.push({ role: 'assistant', content })
+        content = metadata.content.trim() + '\n'
       }
+      const arStr = Object.keys(payload).length ? JSON.stringify(payload) : ''
+      content += `<FUNCTION_CALL>${functionName}(${arStr})</FUNCTION_CALL>`
+      this.messages.push({ role: 'assistant', content })
       const result = await this._callFunctionWithArgs(functionName, payload)
       this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
     } else if (this.modelFamily === 'openai') {

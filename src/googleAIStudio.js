@@ -16,7 +16,7 @@ function mod () {
   let serverPromise
   let wss
 
-  let throttleTime = 10000
+  let throttleTime = 15000
   let throttle, isBusy
 
   // 1. Run a local server that a local AI Studio client can connect to
@@ -109,13 +109,14 @@ function mod () {
   async function generateCompletion (model, messages, chunkCb, options) {
     await runServer()
     await throttle
+    throttle = sleep(throttleTime)
     if (isBusy) {
       throw new Error('Only one request at a time is supported with AI Studio, please wait for the previous request to finish')
     }
-    // console.log('Sending completion request to server', model, prompt)
+    debug('Sending completion request to server', model, messages)
     isBusy = true
-    const prompt = messages.map(m => m.content).join('\n')
-    serverConnection.emit('completionRequest', { model, prompt, messages, stopSequences: options?.stopSequences })
+    const promptConcat = messages.map(m => m.content).join('\n')
+    serverConnection.emit('completionRequest', { model, prompt: promptConcat, messages, stopSequences: options?.stopSequences })
     function completionChunk (response) {
       chunkCb?.(response)
     }
@@ -125,67 +126,61 @@ function mod () {
       throw new Error('Completion failed: ' + JSON.stringify(response))
     }
     serverConnection.off('completionChunk', completionChunk)
-    // console.log('Done')
     // If the user is using streaming, they won't face any delay getting the response
-    throttle = await sleep(throttleTime)
+    await throttle
     isBusy = false
     return {
       text: response.text
     }
   }
 
-  const basePrompt = importPromptRaw('./googleAiStudioPrompt.txt')
+  const baseInstrPrompt = importPromptRaw('./googleAiStudioPrompt.txt')
 
   async function requestChatCompletion (model, messages, chunkCb, options) {
     const hasSystemMessage = messages.some(m => m.role === 'system')
-    const stops = ['<|ASSISTANT|>', '<|USER|>', '<|SYSTEM|>', '<|FUNCTION_OUTPUT|>', '</FUNCTION_CALL>']
-    const msg = loadPrompt(basePrompt, {
+    const stops = ['<|USER|>', '<|FUNCTION_OUTPUT|>', '</FUNCTION_CALL>']
+    const systemMsg = loadPrompt(baseInstrPrompt, {
       HAS_PROMPT: hasSystemMessage,
       HAS_FUNCTIONS: !!options.functions,
       LIST_OF_FUNCTIONS: options.functions ? encodeYaml(options.functions) : ''
     })
-    const prefixedMessages = [{ role: 'user', content: msg }]
+    const systemMessage = { role: 'system', content: systemMsg }
+    const prefixedMessages = [systemMessage]
     let guidanceMessage
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i]
       if (i === 0 && message.role === 'system' && message.content) {
-      // Modify the first user message (which acts as system prompt)
-        const firstMessage = prefixedMessages[0]
-        firstMessage.content += '\nYour prompt is:\n'
-        firstMessage.content += message.content
+        // Modify the first user message (which acts as system prompt)
+        systemMessage.content += '\nYour prompt is:\n'
+        systemMessage.content += message.content
       } else if (message.role === 'system') {
         throw new Error('The first message must be a system message')
       }
       if (message.role === 'assistant' || message.role === 'model') {
-        const content = `<|ASSISTANT|>\n${message.content})`
+        const content = message.content
         prefixedMessages.push({ role: 'model', content })
       } else if (message.role === 'guidance') {
-        const content = `<|ASSISTANT|>\n${message.content})`
-        guidanceMessage = content
+        guidanceMessage = message.content
       } else if (message.role === 'user') {
-        const content = `<|USER|>\n${message.content}`
+        const content = options.functions ? `<|USER|>\n${message.content}` : message.content
         prefixedMessages.push({ role: 'user', content })
       } else if (message.role === 'function') {
-      // TODO: log the function name also maybe?
-        const content = `<|FUNCTION_OUTPUT|>\n${message.content})`
+        // TODO: log the function name also maybe?
+        const content = `<|FUNCTION_OUTPUT|>\n${message.content}`
         prefixedMessages.push({ role: 'user', content })
       }
     }
-    // We don't actually need all these roles, it just makes things more complicated for the LLM
-    // since it already has a way to distinguish between user and model messages.
-    // So let's just merge them into one user message, and only put in a model message
-    // at the end if the user is specifying some guidance fot the model's response.
-    const finalMessageStr = prefixedMessages.map(m => m.content).join('\n')
-    const finalMessages = [{ role: 'user', content: finalMessageStr }]
     if (guidanceMessage) {
-      finalMessages.push({ role: 'model', content: guidanceMessage })
-    } else {
-      finalMessages[0].content += '\n<|ASSISTANT|>'
+      prefixedMessages.push({ role: 'model', content: guidanceMessage })
     }
 
-    debug('Sending chat completion request to server', model, finalMessages)
+    console.debug('Sending chat completion request to server', model, prefixedMessages)
 
-    const response = await generateCompletion(model, finalMessages, chunkCb, {
+    // const rawResponse = '<FUNCTION_CALL>getWeather({"location":"Beijing"})</FUNCTION_CALL>'
+    // return { type: 'function', rawResponse, content: '', fnCalls: [{ name: 'getWeather', args: '{"location":"Beijing"}' }]}
+    // process.exit(1)
+
+    const response = await generateCompletion(model, prefixedMessages, chunkCb, {
       ...options,
       stopSequences: stops.concat(options?.stopSequences || [])
     })
@@ -202,6 +197,7 @@ function mod () {
       debug('Function call', fnName, fnArgs)
       return {
         type: 'function',
+        rawResponse: result,
         content: modelComment,
         fnCalls: [{ name: fnName, args: fnArgs }]
       }
