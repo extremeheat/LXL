@@ -2,6 +2,8 @@ type CompletionResponse = { text: string }
 
 declare module 'langxlang' {
   type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
+  type Role = 'system' | 'user' | 'assistant'
+  type Message = { role: Role, content: string }
   type ChunkCb = ({ content: string }) => void
 
   type CompletionOptions = {
@@ -26,11 +28,13 @@ declare module 'langxlang' {
 
     listModels(): Promise<{ openai: Record<string, object>, google: Record<string, object> }>
 
-    // Request a non-streaming completion from the model.
+    // Request a completion from the model with a system prompt and a single user prompt.
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?, options?: CompletionOptions & {
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
     }): Promise<CompletionResponse[]>
+    // Request a completion from the model with a sequence of chat messages which have roles.
+    requestChatCompletion(model: Model, options: { messages: Message[], generationOptions: CompletionOptions }, chunkCb: ChunkCb): Promise<CompletionResponse[]>
   }
 
   // Note: GoogleAIStudioCompletionService does NOT use the official AI Studio API, but instead uses a relay server to forward requests to an AIStudio client.
@@ -61,6 +65,9 @@ declare module 'langxlang' {
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
     }): Promise<CompletionResponse[]>
+
+    // Request a completion from the model with a sequence of chat messages which have roles.
+    requestChatCompletion(model: Model, options: { messages: Message[], generationOptions: CompletionOptions }, chunkCb: ChunkCb): Promise<CompletionResponse[]>
   }
 
   type SomeCompletionService = CompletionService | GoogleAIStudioCompletionService
@@ -132,15 +139,21 @@ declare module 'langxlang' {
     // gives big chunks over long periods of time unlike OpenAI APIs. Default pipeTo is process.stdout.
     createTypeWriterEffectStream(pipeTo?: NodeJS.WritableStream): (chunk) => void
     // Pre-processes markdown and replaces variables and conditionals with data from `vars`
+    loadPrompt(text: string, vars: Record<string, string>, opts: { roles: Record<string, Role> }): Message[]
     loadPrompt(text: string, vars: Record<string, string>): string
     // Loads a file from disk (from current script's relative path or absolute path) and
     // replaces variables and conditionals with data from `vars`
+    importPromptSync(filePath: string, vars: Record<string, string>, opts: { roles: Record<string, Role> }): Message[]
     importPromptSync(filePath: string, vars: Record<string, string>): string
     // Loads a file from disk (from current script's relative path or absolute path) and
     // replaces variables and conditionals with data from `vars`
+    importPrompt(filePath: string, vars: Record<string, string>, opts: { roles: Record<string, Role> }): Promise<Message[]>
     importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
     // Reads a file from disk and returns the raw contents
     importRawSync(filePath: string): string
+    // Takes in a prompt string and splits it by `roles` into an array of messages that are segmented by role.
+    // The `roles` arg is a record of sequences to role. Default roles are <|SYSTEM|> (system), <|USER|> (user), and <|ASSISTANT|> (assistant).
+    segmentPromptByRoles(prompt: string, roles?: Record<string, string>): { role: Role, content: string }[]
     // Various string manipulation tools to minify/strip down strings
     stripping: {
       stripMarkdown(input: string, options?: StripOptions): string
@@ -160,15 +173,6 @@ declare module 'langxlang' {
 
   const tools: Tools
   const Func: Func
-
-  // Pre-processes markdown and replaces variables and conditionals with data from `vars`
-  function loadPrompt(text: string, vars: Record<string, string>): string
-  // Loads a file from disk (from current script's relative path or absolute path) and
-  // replaces variables and conditionals with data from `vars`
-  function importPromptSync(filePath: string, vars: Record<string, string>): string
-  // Loads a file from disk (from current script's relative path or absolute path) and
-  // replaces variables and conditionals with data from `vars`
-  function importPrompt(filePath: string, vars: Record<string, string>): Promise<string>
 
   // Flow is a class that can be used to create a chain of prompts and response handling.
   // You can also ask follow up questions somewhere along the chain, and Flow will stop

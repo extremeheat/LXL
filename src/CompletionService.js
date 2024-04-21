@@ -35,10 +35,8 @@ class CompletionService {
 
   async _requestCompletionOpenAI (model, system, user, { maxTokens, stopSequences, temperature, topP }, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
-    const guidance = system?.guidanceText || user?.guidanceText || ''
     const response = await openai.generateCompletion(model, system.basePrompt || system, user.basePrompt || user, {
       apiKey: this.openaiApiKey,
-      guidanceMessage: guidance,
       generationConfig: {
         max_tokens: maxTokens,
         stop: stopSequences,
@@ -46,12 +44,11 @@ class CompletionService {
         top_p: topP
       }
     })
-    return response.choices.map((choice) => ({ text: guidance + choice.content }))
+    return response.choices.map((choice) => ({ text: choice.content }))
   }
 
   async _requestCompletionGemini (model, system, user, { maxTokens, stopSequences, temperature, topP, topK }, chunkCb) {
     if (!this.geminiApiKey) throw new Error('Gemini API key not set')
-    const guidance = system?.guidanceText || user?.guidanceText || ''
     // April 2024 - Only Gemini 1.5 supports instructions
     if (!checkDoesGoogleModelSupportInstructions(model)) {
       const mergedPrompt = [system, user].join('\n')
@@ -69,7 +66,7 @@ class CompletionService {
       }
     }, chunkCb)
     chunkCb?.({ done: true, delta: '' })
-    return [{ text: guidance + result.text() }]
+    return [{ text: result.text() }]
   }
 
   async requestCompletion (model, system, user, chunkCb, options = {}) {
@@ -111,14 +108,18 @@ class CompletionService {
 
   async _requestStreamingChatOpenAI (model, messages, { maxTokens, stopSequences, temperature, topP }, functions, chunkCb) {
     if (!this.openaiApiKey) throw new Error('OpenAI API key not set')
+    const guidance = checkGuidance(messages, chunkCb)
     const response = await openai.generateChatCompletionIn(
       model,
       messages.map((entry) => {
         const msg = structuredClone(entry)
         if (msg.role === 'model') msg.role = 'assistant'
-        if (msg.role === 'guidance') msg.role = 'assistant'
+        if (msg.role === 'guidance') {
+          msg.role = 'assistant'
+          chunkCb?.({ done: false, content: msg.content })
+        }
         return msg
-      }),
+      }).filter((msg) => msg.content),
       {
         apiKey: this.openaiApiKey,
         functions,
@@ -139,12 +140,14 @@ class CompletionService {
         content_filter: 'safety', // an error would be thrown before this
         tool_calls: 'function'
       }[choice.finishReason] ?? 'unknown'
-      return { type: choiceType, isTruncated: choice.finishReason === 'length', ...choice }
+      const content = guidance ? guidance.content + choice.content : choice.content
+      return { type: choiceType, isTruncated: choice.finishReason === 'length', ...choice, content }
     })
   }
 
   async _requestStreamingChatGemini (model, messages, { maxTokens, stopSequences, temperature, topP, topK }, functions, chunkCb) {
     if (!this.geminiApiKey) throw new Error('Gemini API key not set')
+    const guidance = checkGuidance(messages, chunkCb)
     const geminiMessages = messages.map((msg) => {
       const m = structuredClone(msg)
       if (msg.role === 'assistant') m.role = 'model'
@@ -155,7 +158,7 @@ class CompletionService {
         m.parts = [{ text: msg.content }]
       }
       return m
-    })
+    }).filter((msg) => msg.parts && (msg.parts.length > 0) && (msg.parts[0].text.length > 0))
     const response = await gemini.generateChatCompletionEx(model, geminiMessages, {
       apiKey: this.geminiApiKey,
       functions,
@@ -170,7 +173,8 @@ class CompletionService {
     if (response.text()) {
       const answer = response.text()
       chunkCb?.({ done: true, delta: '' })
-      const result = { type: 'text', content: answer }
+      const content = guidance ? guidance + answer : answer
+      const result = { type: 'text', content }
       return [result]
     } else if (response.functionCalls()) {
       const calls = response.functionCalls()
@@ -202,6 +206,21 @@ class CompletionService {
 
   stop () {}
   close () {}
+}
+
+function checkGuidance (messages, chunkCb) {
+  const guidance = messages.filter((msg) => msg.role === 'guidance')
+  if (guidance.length > 1) {
+    throw new Error('Only one guidance message is supported')
+  } else if (guidance.length) {
+    // ensure it's the last message
+    const lastMsg = messages[messages.length - 1]
+    if (lastMsg !== guidance[0]) {
+      throw new Error('Guidance message must be the last message')
+    }
+    chunkCb?.({ done: false, content: guidance[0].content })
+    return guidance[0].content
+  }
 }
 
 module.exports = { appDataDir: caching.appDataDir, CompletionService }

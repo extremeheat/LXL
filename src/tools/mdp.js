@@ -6,11 +6,11 @@ const { normalizeLineEndings } = require('./stripping')
 // See doc/MarkdownPreprocessing.md for more information
 
 class PromptString extends String {
-  constructor (str, basePrompt, guidanceText) {
-    super(str)
-    this.basePrompt = basePrompt
-    this.guidanceText = guidanceText
-  }
+
+}
+
+function stripComments (text) {
+  return text.replace(/<!--[\s\S]*?-->/g, '')
 }
 
 function preMarkdown (text, vars = {}) {
@@ -24,6 +24,8 @@ function preMarkdown (text, vars = {}) {
   let tokens = []
   let temp = ''
   let result = text
+  // First, strip out all the comments
+  result = stripComments(text)
 
   // Handle conditional insertions first
   const TOKEN_COND_START = '%%%['
@@ -222,6 +224,35 @@ function preMarkdown (text, vars = {}) {
   return result
 }
 
+const DEFAULT_ROLES = {
+  '<|SYSTEM|>': 'system',
+  '<|USER|>': 'user',
+  '<|ASSISTANT|>': 'assistant'
+}
+
+function segmentByRoles (text, roles) {
+  // split the text into segments based on the roles
+  const segments = []
+  for (let i = 0; i < text.length; i++) {
+    for (const role in roles) {
+      if (text.slice(i, i + role.length) === role) {
+        segments.push({ role, start: i, end: i + role.length })
+        i += role.length
+        break
+      }
+    }
+  }
+  // now we can extract the text from each segment
+  const result = []
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i]
+    const nextSegment = segments[i + 1]
+    const roleText = text.slice(segment.end, nextSegment ? nextSegment.start : text.length)
+    result.push({ role: roles[segment.role], content: roleText.trim() })
+  }
+  return result.filter(x => x.content.trim() !== '')
+}
+
 // Wraps the contents by using the specified token character at least 3 times,
 // ensuring that the token is long enough that it's not present in the content
 function wrapContentWithSufficientTokens (content, token = '`', initialTokenSuffix = '') {
@@ -237,17 +268,20 @@ function wrapContentWithSufficientTokens (content, token = '`', initialTokenSuff
   return lines
 }
 
-function loadPrompt (text, vars) {
-  // Prevent user data from affecting the guidance token by using a intermediate random string
-  const TOKEN_GUIDANCE_START = '%%%$GUIDANCE_START$%%%'
-  const tokenGuidanceStart = `%%%$GUIDANCE_START${Math.random()}$%%%`
-  text = text.replaceAll(TOKEN_GUIDANCE_START, tokenGuidanceStart)
+function loadPrompt (text, vars, options = {}) {
+  const newRoles = {}
+  if (options.roles) {
+    // Prevent user data from affecting this
+    const roles = options.roles === true ? DEFAULT_ROLES : options.roles
+    for (const role in roles) {
+      const newRole = role + Math.random()
+      newRoles[newRole] = roles[role]
+      text = text.replaceAll(role, newRole)
+    }
+  }
   const str = preMarkdown(text.replaceAll('\r\n', '\n'), vars)
-  const guidanceText = str.indexOf(tokenGuidanceStart)
-  if (guidanceText !== -1) {
-    const [basePrompt, guidanceText] = str.split(tokenGuidanceStart)
-    const newStr = str.replace(tokenGuidanceStart, '')
-    return new PromptString(newStr, basePrompt, guidanceText)
+  if (options.roles) {
+    return segmentByRoles(str, newRoles)
   } else {
     return new PromptString(str)
   }
@@ -278,14 +312,14 @@ function importPromptRaw (path) {
   return data.replaceAll('\r\n', '\n')
 }
 
-function importPromptSync (path, vars) {
+function importPromptSync (path, vars, opts) {
   const data = path.startsWith('.')
     ? readSync(path, getCaller(1))
     : readSync(path)
-  return loadPrompt(data, vars)
+  return loadPrompt(data, vars, opts)
 }
 
-async function importPrompt (path, vars) {
+async function importPrompt (path, vars, opts) {
   let fullPath = path
   if (path.startsWith('.')) {
     const caller = getCaller(1)
@@ -295,7 +329,7 @@ async function importPrompt (path, vars) {
   }
   try {
     const text = await fs.promises.readFile(fullPath, 'utf-8')
-    return loadPrompt(text, vars)
+    return loadPrompt(text, vars, opts)
   } catch (e) {
     if (!path.startsWith('.')) {
       throw new Error(`Failed to load prompt at specified path '${path}'. If you want to load a prompt relative to your script's current directory, you need to pass a relative path starting with './'`)
@@ -304,4 +338,4 @@ async function importPrompt (path, vars) {
   }
 }
 
-module.exports = { preMarkdown, wrapContentWithSufficientTokens, loadPrompt, importPromptSync, importPrompt, importPromptRaw }
+module.exports = { preMarkdown, wrapContentWithSufficientTokens, segmentByRoles, loadPrompt, importPromptSync, importPrompt, importPromptRaw }

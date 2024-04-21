@@ -29,6 +29,17 @@ describe('Basic tests', () => {
     // fs.writeFileSync('__encoded.yaml', encoded)
     yaml.load(encoded)
   })
+
+  it('mdp role processing', function () {
+    const prompt = tools.importRawSync('./testPromptRoles.md')
+    const messages = tools.segmentPromptByRoles(prompt, {
+      '<|SYSTEM|>': 'system',
+      '<|USER|>': 'user',
+      '<|ASSISTANT|>': 'assistant'
+    }) // use default roles
+    console.log('Messages', JSON.stringify(messages))
+    assert.strictEqual(JSON.stringify(messages), '[{"role":"system","content":"Respond to the user like a pirate."},{"role":"user","content":"How are you today?"},{"role":"assistant","content":"Arrr, I be doin\' well, matey! How can I help ye today?"},{"role":"user","content":"What is the weather like?"},{"role":"assistant","content":"Arrr, the weather be fair and mild, matey. Ye be safe to set sail!"}]')
+  })
 })
 
 describe('stripping', function () {

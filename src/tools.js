@@ -3,7 +3,7 @@ const viz = require('./tools/viz')
 const xml = require('./tools/xml')
 const yaml = require('./tools/yaml')
 const stripping = require('./tools/stripping')
-const { wrapContentWithSufficientTokens, importPromptRaw, importPromptSync, importPrompt, loadPrompt, preMarkdown } = require('./tools/mdp')
+const mdp = require('./tools/mdp')
 
 function createTypeWriterEffectStream (to = process.stdout) {
   // Instead of writing everything at once, we want a typewriter effect
@@ -49,13 +49,13 @@ module.exports = {
   concatFilesToMarkdown: codebase.concatFilesToMarkdown,
   createTypeWriterEffectStream,
   extractCodeblockFromMarkdown,
-  wrapContent: wrapContentWithSufficientTokens,
-  preMarkdown,
-  loadPrompt,
-  importPromptRaw,
-  importRawSync: importPromptRaw,
-  importPromptSync,
-  importPrompt,
+  wrapContent: mdp.wrapContentWithSufficientTokens,
+  preMarkdown: mdp.preMarkdown,
+  loadPrompt: mdp.loadPrompt,
+  importPromptRaw: mdp.importPromptRaw,
+  importRawSync: mdp.importPromptRaw,
+  importPromptSync: mdp.importPromptSync,
+  importPrompt: mdp.importPrompt,
   encodeYAML: yaml.encodeYaml,
   decodeXML: xml.decodeXML
 }

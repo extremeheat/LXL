@@ -38,9 +38,11 @@ Hello, how are you doing today on this %%%(DAY_OF_WEEK)%%%?
 %%%endif
 ````
 
-We can construct the following chain to ask the user how they are doing, 
-then ask them what day of the week tomorrow is, support a follow-up question 
-after the first response to ask the model to turn the response into YAML format:
+We can construct the following chain to:
+* ask the user how they are doing, 
+* then ask them what day of the week tomorrow is
+* then support a follow-up question after the first response (where they answered if they were ok), where we ask the model to turn its response into YAML format
+
 ```js
 const chain = (params) => ({
   prompt: importRawSync('./prompt.md'),

@@ -13,7 +13,7 @@ class Flow {
 
   _hash (...args) {
     const hash = crypto.createHash('sha1')
-    args.filter(e => e != null).map(String).forEach(arg => hash.update(arg))
+    hash.update(JSON.stringify(args))
     return hash.digest('hex')
   }
 
@@ -23,25 +23,39 @@ class Flow {
   async _run (details, inherited, runFollowUp, responses) {
     this.lastFlow = details
     this.lastResponses = responses
-    const promptFile = details.prompt || inherited.prompt
-    if (!promptFile) {
-      throw new Error('No prompt provided')
-    }
-    const usingVars = { ...inherited.with, ...details.with }
-    const userPrompt = tools.loadPrompt(promptFile, usingVars)
-    const systemPrompt = details.systemPrompt
-      ? tools.loadPrompt(details.systemPrompt, usingVars)
-      : (inherited.systemPrompt && tools.loadPrompt(inherited.systemPrompt, usingVars))
     const model = details.model || this.defaultModel
+    const usingVars = { ...inherited.with, ...details.with }
+    const prompt = { ...inherited.prompt, ...details.prompt }
+    if (!Object.keys(prompt).length) {
+      throw new Error('No prompt defined')
+    }
+    const messages = []
+
+    if (prompt.text) {
+      const msgs = tools.loadPrompt(prompt.text, usingVars, { roles: prompt.roles })
+      messages.push(...msgs)
+    } else {
+      if (prompt.system) {
+        const system = tools.loadPrompt(prompt.system, usingVars)
+        messages.push({ role: 'system', content: system })
+      }
+      if (prompt.user) {
+        const user = tools.loadPrompt(prompt.user, usingVars)
+        messages.push({ role: 'user', content: user })
+      }
+    }
 
     // This is basically a second layer of caching.
-    const inputHash = this._hash(model, systemPrompt, userPrompt)
+    const inputHash = this._hash(model, messages)
     let resp
     if (runFollowUp && runFollowUp.pastResponses[inputHash]) {
       resp = structuredClone(runFollowUp.pastResponses[inputHash])
     } else {
-      const rs = await this.service.requestCompletion(model, systemPrompt, userPrompt, this.chunkCb, this.generationOpts)
+      const rs = await this.service.requestChatCompletion(model, { messages, generationOptions: this.generationOpts }, this.chunkCb)
       resp = rs[0]
+    }
+    if (!resp) {
+      throw new Error('No response from completion service')
     }
     resp.inputHash = inputHash
     resp.name = details.name
@@ -66,8 +80,7 @@ class Flow {
 
     const nextInherited = {
       with: usingVars,
-      prompt: promptFile,
-      systemPrompt
+      prompt
     }
 
     if (details.transformResponse) {

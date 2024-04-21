@@ -154,7 +154,6 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
 async function generateCompletion (model, system, user, options = {}) {
   const messages = [{ role: 'user', content: user }]
   if (system) messages.unshift({ role: 'system', content: system })
-  if (options.guidanceMessage) messages.push({ role: 'assistant', content: options.guidanceMessage })
   const completion = await generateChatCompletionIn(model, messages, options)
   debug('[OpenAI] Completion', JSON.stringify(completion))
   return completion
