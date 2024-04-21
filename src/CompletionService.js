@@ -1,7 +1,7 @@
 const openai = require('./openai')
 const palm2 = require('./palm2')
 const gemini = require('./gemini')
-const { cleanMessage, getModelInfo, checkDoesGoogleModelSupportInstructions, knownModels } = require('./util')
+const { cleanMessage, getModelInfo, checkDoesGoogleModelSupportInstructions, checkGuidance, knownModels } = require('./util')
 const caching = require('./caching')
 
 class CompletionService {
@@ -114,10 +114,7 @@ class CompletionService {
       messages.map((entry) => {
         const msg = structuredClone(entry)
         if (msg.role === 'model') msg.role = 'assistant'
-        if (msg.role === 'guidance') {
-          msg.role = 'assistant'
-          chunkCb?.({ done: false, content: msg.content })
-        }
+        if (msg.role === 'guidance') msg.role = 'assistant'
         return msg
       }).filter((msg) => msg.content),
       {
@@ -158,7 +155,7 @@ class CompletionService {
         m.parts = [{ text: msg.content }]
       }
       return m
-    }).filter((msg) => msg.parts && (msg.parts.length > 0) && (msg.parts[0].text.length > 0))
+    }).filter((msg) => msg.parts && (msg.parts.length > 0))
     const response = await gemini.generateChatCompletionEx(model, geminiMessages, {
       apiKey: this.geminiApiKey,
       functions,
@@ -206,21 +203,6 @@ class CompletionService {
 
   stop () {}
   close () {}
-}
-
-function checkGuidance (messages, chunkCb) {
-  const guidance = messages.filter((msg) => msg.role === 'guidance')
-  if (guidance.length > 1) {
-    throw new Error('Only one guidance message is supported')
-  } else if (guidance.length) {
-    // ensure it's the last message
-    const lastMsg = messages[messages.length - 1]
-    if (lastMsg !== guidance[0]) {
-      throw new Error('Guidance message must be the last message')
-    }
-    chunkCb?.({ done: false, content: guidance[0].content })
-    return guidance[0].content
-  }
 }
 
 module.exports = { appDataDir: caching.appDataDir, CompletionService }

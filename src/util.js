@@ -52,4 +52,20 @@ async function sleep (ms) {
   })
 }
 
-module.exports = { sleep, cleanMessage, getModelInfo, getRateLimit, checkDoesGoogleModelSupportInstructions, knownModelInfo, knownModels }
+function checkGuidance (messages, chunkCb) {
+  const guidance = messages.filter((msg) => msg.role === 'guidance')
+  if (guidance.length > 1) {
+    throw new Error('Only one guidance message is supported')
+  } else if (guidance.length) {
+    // ensure it's the last message
+    const lastMsg = messages[messages.length - 1]
+    if (lastMsg !== guidance[0]) {
+      throw new Error('Guidance message must be the last message')
+    }
+    chunkCb?.({ done: false, content: guidance[0].content })
+    return guidance[0].content
+  }
+  return ''
+}
+
+module.exports = { sleep, cleanMessage, getModelInfo, getRateLimit, checkDoesGoogleModelSupportInstructions, checkGuidance, knownModelInfo, knownModels }

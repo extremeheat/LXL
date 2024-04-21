@@ -1,5 +1,6 @@
 const caching = require('./caching')
 const studioLoader = require('./googleAIStudio')
+const util = require('./util')
 
 const supportedModels = ['gemini-1.0-pro', 'gemini-1.5-pro']
 const modelAliases = {
@@ -55,11 +56,8 @@ class GoogleAIStudioCompletionService {
       return response
     }
 
-    const guidance = system?.guidanceText || user?.guidanceText || ''
-    if (guidance) chunkCb?.({ done: false, delta: guidance })
-    const mergedPrompt = [system?.basePrompt || system, user?.basePrompt || user].join('\n')
+    const mergedPrompt = [system, user].join('\n')
     const messages = [{ role: 'user', content: mergedPrompt }]
-    if (guidance) messages.push({ role: 'model', content: guidance })
     const result = await this._studio.generateCompletion(model, messages, chunkCb)
     let combinedResult = result.text
     if (options.autoFeed) {
@@ -87,7 +85,7 @@ class GoogleAIStudioCompletionService {
       }
     }
     chunkCb?.({ done: true, delta: '\n' })
-    return [saveIfCaching({ text: guidance + combinedResult })]
+    return [saveIfCaching({ text: combinedResult })]
   }
 
   async requestChatCompletion (model, { messages, functions, generationOptions }, chunkCb) {
@@ -95,8 +93,12 @@ class GoogleAIStudioCompletionService {
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
     }
+    const guidance = util.checkGuidance(messages, chunkCb)
     const result = await this._studio.requestChatCompletion(model, messages, chunkCb, { ...generationOptions, functions })
     chunkCb?.({ done: true, delta: '\n' })
+    if (result.type === 'text') {
+      return [{ ...result, content: guidance + result.text }]
+    }
     return [result]
   }
 }

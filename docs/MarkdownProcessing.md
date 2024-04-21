@@ -75,7 +75,7 @@ We can extract the following messages array that looks like this:
   { role: 'user', message: 'How are you today?' },
   { role: 'assistant', message: 'Arrr, I be doin\' well, matey! How can I help ye today?' },
   { role: 'user', message: 'What is the weather like?' },
-  { role: 'assistant', message: '' } // LXL will automatically remove empty messages
+  // LXL will automatically remove empty messages
 ]
 ```
 
@@ -111,3 +111,7 @@ const [response] = await service.requestChatCompletion('gemini-1.0-pro', {
 })
 console.log(response) // { text: '```json\n{"hello": "world"}\n' }
 ```
+
+Note: there can only be one guidance message and it must be the last one. You should remove
+it from the messages array the next call you do to requestChatCompletion. This feature works
+best when used with the role parsing system above.

@@ -16,7 +16,7 @@ function mod () {
   let serverPromise
   let wss
 
-  let throttleTime = 15000
+  let throttleTime = 17000 // 15s + 2s safety margin
   let throttle, isBusy
 
   // 1. Run a local server that a local AI Studio client can connect to
@@ -174,7 +174,7 @@ function mod () {
       prefixedMessages.push({ role: 'model', content: guidanceMessage })
     }
 
-    console.debug('Sending chat completion request to server', model, prefixedMessages)
+    debug('Sending chat completion request to server', model, prefixedMessages)
 
     // const rawResponse = '<FUNCTION_CALL>getWeather({"location":"Beijing"})</FUNCTION_CALL>'
     // return { type: 'function', rawResponse, content: '', fnCalls: [{ name: 'getWeather', args: '{"location":"Beijing"}' }]}
