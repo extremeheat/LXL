@@ -36,7 +36,7 @@
     "standard": "^17.0.0"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.7.1",
+    "@google/generative-ai": "^0.8.0",
     "acorn": "^8.11.3",
     "caller": "^1.1.0",
     "debug": "^4.3.4",
