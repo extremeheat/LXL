@@ -49,7 +49,7 @@ class GoogleAIStudioCompletionService {
       }
     }
     function saveIfCaching (response) {
-      if (response && response.text && options.enableCaching) {
+      if (response && response.content && options.enableCaching) {
         caching.addResponseToCache(model, [system, user], response)
       }
       return response
@@ -60,7 +60,7 @@ class GoogleAIStudioCompletionService {
       messages.unshift({ role: 'system', content: system })
     }
     const result = await this._studio.generateCompletion(model, messages, chunkCb)
-    let combinedResult = result.text
+    let combinedResult = result.content
     if (options.autoFeed) {
       const until = options.autoFeed.stopLine
       const maxRounds = options.autoFeed.maxRounds || 10
@@ -69,24 +69,24 @@ class GoogleAIStudioCompletionService {
         // Check if the last message is a model message, if not, insert one
         const lastMessage = messages[messages.length - 1]
         if (lastMessage.role !== 'model') {
-          messages.push({ role: 'model', content: result.text })
+          messages.push({ role: 'model', content: result.content })
         } else {
           // Append the result to the last model message
-          lastMessage.content += result.text
+          lastMessage.content += result.content
         }
         for (let i = 0; i < maxRounds; i++) {
           const lastMessage = messages[messages.length - 1]
           const now = await this._studio.generateCompletion(model, messages, chunkCb)
-          lastMessage.content += now.text
-          combinedResult += now.text
-          if (checkContainsStopTokenLine(now.text, until)) {
+          lastMessage.content += now.content
+          combinedResult += now.content
+          if (checkContainsStopTokenLine(now.content, until)) {
             break
           }
         }
       }
     }
     chunkCb?.({ done: true, delta: '\n' })
-    return [saveIfCaching({ text: combinedResult })]
+    return [saveIfCaching({ type: 'text', text: combinedResult, content: combinedResult })]
   }
 
   async requestChatCompletion (model, { messages, functions, generationOptions }, chunkCb) {
@@ -97,7 +97,8 @@ class GoogleAIStudioCompletionService {
     const result = await this._studio.requestChatCompletion(model, messages, chunkCb, { ...generationOptions, functions })
     chunkCb?.({ done: true, delta: '\n' })
     if (result.type === 'text') {
-      return [{ ...result, content: guidance + result.text }]
+      const content = guidance ? guidance + result.content : result.content
+      return [{ ...result, content, text: content }]
     }
     return [result]
   }

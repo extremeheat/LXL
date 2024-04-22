@@ -130,7 +130,8 @@ function mod () {
     await throttle
     isBusy = false
     return {
-      text: response.text
+      text: response.text,
+      content: response.text
     }
   }
 
@@ -184,7 +185,7 @@ function mod () {
       ...options,
       stopSequences: stops.concat(options?.stopSequences || [])
     })
-    const text = response.text
+    const text = response.content
     const parts = text.split('<|ASSISTANT|>')
     const result = parts[parts.length - 1].trim()
     const containsFunctionCall = result.includes('<FUNCTION_CALL>')
@@ -204,6 +205,7 @@ function mod () {
     } else {
       return {
         type: 'text',
+        text: result,
         content: result
       }
     }

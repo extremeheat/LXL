@@ -85,15 +85,15 @@ async function makeVizForPrompt (system, user, models, options) {
     if (modelInfo.author === 'googleaistudio') {
       aiStudioService ??= new GoogleAIStudioCompletionService(options?.aiStudioPort)
       await aiStudioService.ready
-      const { text } = await aiStudioService.requestCompletion(model, system, user)
+      const [response] = await aiStudioService.requestCompletion(model, system, user)
       data.models.push([modelInfo.displayName, modelInfo.safeId])
-      data.outputs[modelInfo.safeId] = text
+      data.outputs[modelInfo.safeId] = response.text
       continue
     }
 
-    const { text } = await service.requestCompletion(model, system, user)
+    const [response] = await service.requestCompletion(model, system, user)
     data.models.push([modelInfo.displayName, modelInfo.safeId])
-    data.outputs[modelInfo.safeId] = text
+    data.outputs[modelInfo.safeId] = response.text
   }
 
   aiStudioService?.stop()

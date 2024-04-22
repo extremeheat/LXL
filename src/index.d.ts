@@ -1,4 +1,4 @@
-type CompletionResponse = { text: string }
+type CompletionResponse = { content: string, text: string }
 
 declare module 'langxlang' {
   type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'

@@ -59,7 +59,7 @@ class CompletionService {
     }
     function saveIfCaching (responses) {
       for (const response of responses) {
-        if (response && response.text && options.enableCaching) {
+        if (response && response.content && options.enableCaching) {
           caching.addResponseToCache(model, [system, user], response)
         }
       }
@@ -78,7 +78,7 @@ class CompletionService {
       case 'palm2': {
         if (!this.palm2ApiKey) throw new Error('PaLM2 API key not set')
         const result = await palm2.requestPalmCompletion(system + '\n' + user, this.palm2ApiKey, model)
-        return saveIfCaching({ text: result })
+        return saveIfCaching({ text: result, content: result })
       }
       default:
         throw new Error(`Model '${model}' not supported for completion, available models: ${knownModels.join(', ')}`)
@@ -117,7 +117,7 @@ class CompletionService {
         tool_calls: 'function'
       }[choice.finishReason] ?? 'unknown'
       const content = guidance ? guidance.content + choice.content : choice.content
-      return { type: choiceType, isTruncated: choice.finishReason === 'length', ...choice, content }
+      return { type: choiceType, isTruncated: choice.finishReason === 'length', ...choice, content, text: content }
     })
   }
 
@@ -152,7 +152,7 @@ class CompletionService {
       const answer = response.text()
       chunkCb?.({ done: true, delta: '' })
       const content = guidance ? guidance + answer : answer
-      const result = { type: 'text', content }
+      const result = { type: 'text', content, text: content }
       return [result]
     } else if (response.functionCalls()) {
       const calls = response.functionCalls()
@@ -183,7 +183,7 @@ class CompletionService {
     }
     function saveIfCaching (responses) {
       for (const response of responses) {
-        if (response && response.text && enableCaching) {
+        if (response && response.content && enableCaching) {
           caching.addResponseToCache(model, messages, response)
         }
       }

@@ -177,7 +177,7 @@ class ChatSession {
       }
       response.content = message.guidanceText + response.content
     }
-    return { text: response.content, calledFunctions: this._calledFunctionsForRound }
+    return { content: response.content, text: response.content, calledFunctions: this._calledFunctionsForRound }
   }
 }
 

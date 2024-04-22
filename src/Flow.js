@@ -66,6 +66,7 @@ class Flow {
         throw new Error(`Unsupported output type: ${details.outputType.codeblock}`)
       }
       // Abstraction to format/extract the desired format out of the response text, e.g. YAML, JSON, etc.
+      if (!resp.text.includes('```')) throw new Error('No codeblock found in response')
       const [codeblock] = tools.extractCodeblockFromMarkdown(resp.text)
       if (!codeblock) {
         throw new Error('No codeblock found in response')
