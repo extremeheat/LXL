@@ -50,7 +50,6 @@ function countStart (str, char) {
 
 function parseMarkdown (text, options) {
   const tokens = tokenizeMarkdown(text, {})
-  // console.dir(tokens, { depth: null })
   // pre-process the data a bit
   const data = []
   for (const token of tokens) {
@@ -99,7 +98,6 @@ function parseMarkdown (text, options) {
       current.push(line)
     }
   }
-  // console.dir(inter, { depth: null })
   // remove circular references
   const structured = JSON.parse(JSON.stringify(inter, (key, value) => key === 'parent' ? undefined : value, 2))
   return {

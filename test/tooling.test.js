@@ -32,7 +32,7 @@ describe('Basic tests', () => {
 
   it('md parsing works', function () {
     const parsed = tools._parseMarkdown(testMd)
-    const json = JSON.stringify(parsed, (k, v) => k === 'parent' ? undefined : v)
+    const json = JSON.stringify(parsed)
     // console.log('Parsed', json)
     assert.strictEqual(json, expectedMd)
   })

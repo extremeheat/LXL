@@ -542,7 +542,6 @@ function tokenizeMarkdown (comment, options) {
       }
     }
   }
-  // console.log('Tokens0', tokens)
 
   if (inCodeBlock) {
     if (options.allowMalformed) {
@@ -580,7 +579,6 @@ function tokenizeMarkdown (comment, options) {
     }
     updated.push(token)
   }
-  // console.dir(updated, { depth: null })
   return updated
 }
 
