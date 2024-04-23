@@ -75,9 +75,10 @@ class Flow {
         resp.output = yaml.load(codeblock.code)
       } else if (details.outputType.codeblock === 'json') {
         resp.output = JSON.parse(codeblock.code)
+      } else if (details.outputType.codeblock === 'md') {
+        resp.output = codeblock.code
       }
     }
-    responses.push(resp)
 
     const nextInherited = {
       with: usingVars,
@@ -87,6 +88,7 @@ class Flow {
     if (details.transformResponse) {
       resp = await details.transformResponse(resp)
     }
+    responses.push(resp)
 
     if (runFollowUp && details.followUps[runFollowUp.name]) {
       const f = await details.followUps[runFollowUp.name](resp, runFollowUp.input)
