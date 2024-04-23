@@ -13,7 +13,7 @@ class Flow {
 
   _hash (...args) {
     const hash = crypto.createHash('sha1')
-    args.filter(e => e != null).map(String).forEach(arg => hash.update(arg))
+    hash.update(JSON.stringify(args))
     return hash.digest('hex')
   }
 
@@ -23,35 +23,50 @@ class Flow {
   async _run (details, inherited, runFollowUp, responses) {
     this.lastFlow = details
     this.lastResponses = responses
-    const promptFile = details.prompt || inherited.prompt
-    if (!promptFile) {
-      throw new Error('No prompt provided')
-    }
-    const usingVars = { ...inherited.with, ...details.with }
-    const userPrompt = tools.loadPrompt(promptFile, usingVars)
-    const systemPrompt = details.systemPrompt
-      ? tools.loadPrompt(details.systemPrompt, usingVars)
-      : (inherited.systemPrompt && tools.loadPrompt(inherited.systemPrompt, usingVars))
     const model = details.model || this.defaultModel
+    const usingVars = { ...inherited.with, ...details.with }
+    const prompt = { ...inherited.prompt, ...details.prompt }
+    if (!Object.keys(prompt).length) {
+      throw new Error('No prompt defined')
+    }
+    const messages = []
+
+    if (prompt.text) {
+      const msgs = tools.loadPrompt(prompt.text, usingVars, { roles: prompt.roles })
+      messages.push(...msgs)
+    } else {
+      if (prompt.system) {
+        const system = tools.loadPrompt(prompt.system, usingVars)
+        messages.push({ role: 'system', content: system })
+      }
+      if (prompt.user) {
+        const user = tools.loadPrompt(prompt.user, usingVars)
+        messages.push({ role: 'user', content: user })
+      }
+    }
 
     // This is basically a second layer of caching.
-    const inputHash = this._hash(model, systemPrompt, userPrompt)
+    const inputHash = this._hash(model, messages)
     let resp
     if (runFollowUp && runFollowUp.pastResponses[inputHash]) {
       resp = structuredClone(runFollowUp.pastResponses[inputHash])
     } else {
-      const rs = await this.service.requestCompletion(model, systemPrompt, userPrompt, this.chunkCb, this.generationOpts)
+      const rs = await this.service.requestChatCompletion(model, { messages, generationOptions: this.generationOpts }, this.chunkCb)
       resp = rs[0]
+    }
+    if (!resp) {
+      throw new Error('No response from completion service')
     }
     resp.inputHash = inputHash
     resp.name = details.name
 
     if (details.outputType && details.outputType.codeblock) {
-      const supportedTypes = ['yaml', 'json']
+      const supportedTypes = ['yaml', 'json', 'md']
       if (!supportedTypes.includes(details.outputType.codeblock)) {
-        throw new Error(`Unsupported output type: ${details.outputType.codeblock}`)
+        throw new Error(`Unsupported output type: ${details.outputType.codeblock}. Supported types: ${supportedTypes.join(', ')}`)
       }
       // Abstraction to format/extract the desired format out of the response text, e.g. YAML, JSON, etc.
+      if (!resp.text.includes('```')) throw new Error('No codeblock found in response')
       const [codeblock] = tools.extractCodeblockFromMarkdown(resp.text)
       if (!codeblock) {
         throw new Error('No codeblock found in response')
@@ -60,19 +75,20 @@ class Flow {
         resp.output = yaml.load(codeblock.code)
       } else if (details.outputType.codeblock === 'json') {
         resp.output = JSON.parse(codeblock.code)
+      } else if (details.outputType.codeblock === 'md') {
+        resp.output = codeblock.code
       }
     }
-    responses.push(resp)
 
     const nextInherited = {
       with: usingVars,
-      prompt: promptFile,
-      systemPrompt
+      prompt
     }
 
     if (details.transformResponse) {
       resp = await details.transformResponse(resp)
     }
+    responses.push(resp)
 
     if (runFollowUp && details.followUps[runFollowUp.name]) {
       const f = await details.followUps[runFollowUp.name](resp, runFollowUp.input)

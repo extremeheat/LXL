@@ -2,8 +2,7 @@
 const assert = require('assert')
 const { Flow } = require('langxlang')
 
-const chain = (params) => ({
-  prompt: `
+const promptText = `
 <USER>
 Hello, how are you doing today on this %%%(DAY_OF_WEEK)%%%?
 <ASSISTANT>
@@ -22,7 +21,16 @@ Hello, how are you doing today on this %%%(DAY_OF_WEEK)%%%?
   ~~~
   <ASSISTANT>
 %%%endif
-`.trim().replaceAll('~~~', '```'),
+`.trim().replaceAll('~~~', '```')
+
+const chain = (params) => ({
+  prompt: {
+    text: promptText,
+    roles: {
+      '<USER>': 'user',
+      '<ASSISTANT>': 'assistant'
+    }
+  },
   with: {
     DAY_OF_WEEK: params.dayOfWeek
   },
@@ -44,9 +52,10 @@ Hello, how are you doing today on this %%%(DAY_OF_WEEK)%%%?
 })
 
 const dummyCompletionService = {
-  requestCompletion: async (model, systemPrompt, userPrompt, chunkCb, generationOpts) => {
-    const mergedPrompt = [systemPrompt, userPrompt].join('\n')
-    // console.log('mergedPrompt', mergedPrompt)
+  requestChatCompletion: async (model, { messages, generationOpts }, chunkCb) => {
+    assert(messages.every(msg => ['user', 'assistant'].includes(msg.role)))
+    const mergedPrompt = messages.map(m => m.content).join('\n')
+    // console.log('mergedPrompt', [mergedPrompt], messages)
     if (mergedPrompt.includes('YAML')) {
       return [{ text: 'Sure! Here is some yaml:\n```yaml\nare_ok: yes\n```\nI hope that helps!' }]
     } else if (mergedPrompt.includes('tomorrow')) {

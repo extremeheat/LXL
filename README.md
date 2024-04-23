@@ -87,6 +87,12 @@ Note: as an alternative to explicitly passing the API keys in the constructor yo
 
 Request a non-streaming completion from the model.
 
+#### `requestChatCompletion(model: Model, options: { messages: Message[], generationOptions: CompletionOptions }, chunkCb: ChunkCb): Promise<CompletionResponse[]>`
+
+Request a completion from the model with a sequence of chat messages which have roles. A message should look like
+`{ role: 'user', content: 'Hello!' }` or `{ role: 'system', content: 'Hi!' }`. The `role` can be either `user`, `system` or `assistant`, no
+matter the model in use.
+
 ### ChatSession
 
 #### `constructor(completionService: CompletionService, model: string, systemPrompt: string)`
@@ -109,6 +115,13 @@ loadPrompt("Hello, may name is %%%(NAME)%%%", { NAME: "Omega" })
 ```
 * `importPromptSync(path: string, variables: Record<string, string>): string` - Load a prompt from a file with the given variables
 * `importPrompt(path: string, variables: Record<string, string>): Promise<string>` - Load a prompt from a file with the given variables, asynchronously returning a Promise
+
+### Flow
+
+For building complex multi-round conversations or agents, see the `Flow` class. It allows you to define a flow of messages
+and responses, and then run them in a sequence, with the ability to ask follow-up questions based on the previous responses.
+
+See the documentation [here](./docs/flow.md).
 
 ### More information
 

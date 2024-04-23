@@ -16,7 +16,7 @@ function mod () {
   let serverPromise
   let wss
 
-  let throttleTime = 15000
+  let throttleTime = 16000
   let throttle, isBusy
 
   // 1. Run a local server that a local AI Studio client can connect to
@@ -109,7 +109,6 @@ function mod () {
   async function generateCompletion (model, messages, chunkCb, options) {
     await runServer()
     await throttle
-    throttle = sleep(throttleTime)
     if (isBusy) {
       throw new Error('Only one request at a time is supported with AI Studio, please wait for the previous request to finish')
     }
@@ -127,10 +126,12 @@ function mod () {
     }
     serverConnection.off('completionChunk', completionChunk)
     // If the user is using streaming, they won't face any delay getting the response
+    throttle = sleep(throttleTime)
     await throttle
     isBusy = false
     return {
-      text: response.text
+      text: response.text,
+      content: response.text
     }
   }
 
@@ -174,7 +175,7 @@ function mod () {
       prefixedMessages.push({ role: 'model', content: guidanceMessage })
     }
 
-    console.debug('Sending chat completion request to server', model, prefixedMessages)
+    debug('Sending chat completion request to server', model, prefixedMessages)
 
     // const rawResponse = '<FUNCTION_CALL>getWeather({"location":"Beijing"})</FUNCTION_CALL>'
     // return { type: 'function', rawResponse, content: '', fnCalls: [{ name: 'getWeather', args: '{"location":"Beijing"}' }]}
@@ -184,7 +185,7 @@ function mod () {
       ...options,
       stopSequences: stops.concat(options?.stopSequences || [])
     })
-    const text = response.text
+    const text = response.content
     const parts = text.split('<|ASSISTANT|>')
     const result = parts[parts.length - 1].trim()
     const containsFunctionCall = result.includes('<FUNCTION_CALL>')
@@ -204,6 +205,7 @@ function mod () {
     } else {
       return {
         type: 'text',
+        text: result,
         content: result
       }
     }
