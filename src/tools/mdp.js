@@ -1,16 +1,12 @@
 const fs = require('fs')
 const { join, dirname } = require('path')
 const getCaller = require('caller')
-const { normalizeLineEndings } = require('./stripping')
+const { stripMdpComments, normalizeLineEndings } = require('./stripping')
 
 // See doc/MarkdownPreprocessing.md for more information
 
 class PromptString extends String {
 
-}
-
-function stripComments (text) {
-  return text.replace(/<!--[\s\S]*?-->/g, '')
 }
 
 function preMarkdown (text, vars = {}) {
@@ -24,8 +20,8 @@ function preMarkdown (text, vars = {}) {
   let tokens = []
   let temp = ''
   let result = text
-  // First, strip out all the comments
-  result = stripComments(text)
+  // First, strip out all the MDP comments (<!--- ... -->)
+  result = stripMdpComments(text)
 
   // Handle conditional insertions first
   const TOKEN_COND_START = '%%%['

@@ -39,6 +39,10 @@ You are running via API.
 
 Note: you can optionally put 2 spaces of tabulation in each line after an IF or ELSE block to make the code more readable. This is optional, and will be removed by the parser. If you actually want to put 2+ spaces of tabs, you can add an extra 2 spaces of tabulation (eg use 4 spaces to get 2, 6 to get 4, etc.).
 
+#### Comments
+
+You can specify a comment by using `<!---` and `-->` (note the additional dash in the starting token). This will be removed by the parser and not included in the output. We don't remove standard `<!--` comments to allow literal HTML comments in the markdown, which may be helpful when you expect markdown responses from the model.
+
 ### Roles
 
 LXL provides a way to take a markdown prompt template like above and then break up the message into a chat session, which includes several messages each with their own roles. This is opposed to getting a single prompt string from above. You can use all the above pre-processing features with this system. For example, given the following prompt template:

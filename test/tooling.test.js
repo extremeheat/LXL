@@ -30,6 +30,13 @@ describe('Basic tests', () => {
     yaml.load(encoded)
   })
 
+  it('md parsing works', function () {
+    const parsed = tools._parseMarkdown(testMd)
+    const json = JSON.stringify(parsed, (k, v) => k === 'parent' ? undefined : v)
+    // console.log('Parsed', json)
+    assert.strictEqual(json, expectedMd)
+  })
+
   it('mdp role processing', function () {
     const prompt = tools.importRawSync('./testPromptRoles.md')
     const messages = tools._segmentPromptByRoles(prompt, {
@@ -140,3 +147,28 @@ const mineflayer3213 = "- [X] The [FAQ](https://github.com/PrismarineJS/mineflay
 
 const expectedStrip33 = 'Are you saying the automatic doc deploy script is broken? It seems to be\nworking to me. Please explain what has changed in the source and what\nshould be different on the html page.'
 const expectedStrip3213 = "- [X] The [FAQ](https://github.com/PrismarineJS/mineflayer/blob/master/docs/FAQ.md) doesn't contain a resolution to my issue \n## Versions\n - mineflayer: 4.14.0\n - server: vanilla 1.20.1\n - node: 20.8.0\n## Detailed description of a problem\nI was trying to get the bot to the middle of a water pool, by walking it over a boat, and it wasn't moving. I eventually teleported the bot to where I wanted it and it started walking backwards.\nThe physics of the bot doesn't support walking on to boats, and instead treats them as walls.\nhttps://github.com/PrismarineJS/mineflayer/assets/55368789/cb8ab56c-939f-483a-9692-e078ec6366ce\n## Your current code\n```js\n// note: replaced chat handling with the code I used in the video\nconst mineflayer = require('mineflayer')\nconst bot = mineflayer.createBot({\n  host: 'localhost',\n  port: 44741,\n  username: 'SentryBuster',\n  auth: 'offline'\n})\nbot.once('login',()=>{\n  bot.settings.skinParts.showCape = false\n  var flipped = false;\n  setInterval(()=>{\n    let skinparts = bot.settings.skinParts;\n    // skinparts.showJacket = flipped;\n    // skinparts.showLeftSleeve = flipped;\n    // skinparts.showRightSleeve = flipped;\n    // skinparts.showLeftPants = flipped;\n    // skinparts.showRightPants = flipped;\n    skinparts.showHat = flipped;\n    flipped=!flipped\n    bot.setSettings(bot.settings);\n  },250)\n})\nbot.on('spawn',()=>{\n  bot.setControlState('forward',true);\n  setTimeout({\n    bot.setControlState('forward',false);\n    bot.setControlState('back',true);\n  },250)\n})\n```\n## Expected behavior\nI expect the bot to walk onto the boat, just like it does for slabs and stairs.\n## Additional context\nI searched the issues and found a similar issue (#228) about the bot having issues with block collision boxes, but no mention of entities.\nI definitely could modify the bot to jump, and it was only for the bot to get to the middle of the water pool, but I feel like it'd be good to make an issue about this, if anyone else encounters it, or if it becomes a bigger problem in the future. This is an edge case and may not be worth fixing."
+
+const testMd = `
+Action: request changes <!-- or "approve" or "comment" -->
+
+# Comments
+## src/index.js
+This is a file!
+### Line
+    let aple = 1
+### Comment
+It seems like you misspelled 'apple' here. It should be 'apple'.
+## src/index.js
+### Line
+    // Export the function
+
+  
+    module.exports = {}
+### Comment
+It seems like you forgot to export a function from this module! Here's my suggested correction:
+~~~suggestion
+// Export the function
+module.exports = { myFunction }
+~~~
+`.trim().replaceAll('~~~', '```')
+const expectedMd = JSON.stringify({"lines":[{"type":"text","text":"Action: request changes <!-- or \"approve\" or \"comment\" -->"},{"type":"text","text":""},{"type":"header","level":1,"text":"Comments"},{"type":"header","level":2,"text":"src/index.js"},{"type":"text","text":"This is a file!"},{"type":"header","level":3,"text":"Line"},{"type":"text","text":""},{"type":"preformat","raw":"    let aple = 1\n","code":"let aple = 1"},{"type":"header","level":3,"text":"Comment"},{"type":"text","text":"It seems like you misspelled 'apple' here. It should be 'apple'."},{"type":"header","level":2,"text":"src/index.js"},{"type":"header","level":3,"text":"Line"},{"type":"text","text":""},{"type":"preformat","raw":"    // Export the function\n\n  \n    module.exports = {}\n","code":"// Export the function\n\n\nmodule.exports = {}"},{"type":"header","level":3,"text":"Comment"},{"type":"text","text":"It seems like you forgot to export a function from this module! Here's my suggested correction:"},{"type":"text","text":""},{"type":"code","raw":"```suggestion\n// Export the function\nmodule.exports = { myFunction }\n```","lang":"suggestion","code":"// Export the function\nmodule.exports = { myFunction }\n"},{"type":"text","text":""}],"structured":[{"type":"text","text":"Action: request changes <!-- or \"approve\" or \"comment\" -->"},{"type":"text","text":""},{"type":"section","level":1,"title":"Comments","children":[{"type":"section","level":2,"title":"src/index.js","children":[{"type":"text","text":"This is a file!"},{"type":"section","level":3,"title":"Line","children":[{"type":"text","text":""},{"type":"preformat","raw":"    let aple = 1\n","code":"let aple = 1"}]},{"type":"section","level":3,"title":"Comment","children":[{"type":"text","text":"It seems like you misspelled 'apple' here. It should be 'apple'."}]}]},{"type":"section","level":2,"title":"src/index.js","children":[{"type":"section","level":3,"title":"Line","children":[{"type":"text","text":""},{"type":"preformat","raw":"    // Export the function\n\n  \n    module.exports = {}\n","code":"// Export the function\n\n\nmodule.exports = {}"}]},{"type":"section","level":3,"title":"Comment","children":[{"type":"text","text":"It seems like you forgot to export a function from this module! Here's my suggested correction:"},{"type":"text","text":""},{"type":"code","raw":"```suggestion\n// Export the function\nmodule.exports = { myFunction }\n```","lang":"suggestion","code":"// Export the function\nmodule.exports = { myFunction }\n"},{"type":"text","text":""}]}]}]}]}) // eslint-disable-line

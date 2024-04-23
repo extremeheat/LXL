@@ -10,6 +10,28 @@ function normalizeLineEndings (str) {
   return str.replace(/\r\n/g, '\n')
 }
 
+function count (str, char) {
+  let c = 0
+  for (const s of str) {
+    if (s === char) c++
+  }
+  return c
+}
+function countStart (str, char) {
+  let c = 0
+  for (const s of str) {
+    if (s === char) c++
+    else break
+  }
+  return c
+}
+function stripXmlComments (text) {
+  return text.replace(/<!--[\s\S]*?-->/g, '')
+}
+function stripMdpComments (text) {
+  return text.replace(/<!---[\s\S]*?-->/g, '')
+}
+
 function stripJava (code, options) {
   // First, we need to "tokenize" the code, by splitting it into 3 types of data: comments, strings, and code.
   const tokens = []
@@ -426,40 +448,81 @@ function strOnlyContainsCharExcludingWhitespace (str, char) {
 }
 
 function tokenizeMarkdown (comment, options) {
-  // console.log('Tokenize', comment)
   const tokens = []
   let tokenSoFar = ''
   let inCodeBlock = false
   let inCodeLang
+  let inPreTag = false
+  let linePadding = 0
   for (let i = 0; i < comment.length; i++) {
     const currentChar = comment[i]
+    const lastChar = comment[i - 1]
     const slice = comment.slice(i)
-    if (inCodeBlock) {
+    if (lastChar === '\n') {
+      linePadding = countStart(slice.replace('\t', '    '), ' ')
+    }
+    if (inPreTag) {
+      if (slice.startsWith('</pre>')) {
+        tokens.push([tokenSoFar + '</pre>', 'pre'])
+        i += 5
+        inPreTag = false
+        tokenSoFar = ''
+      } else {
+        tokenSoFar += currentChar
+      }
+    } else if (inCodeBlock) {
       // TODO: Check markdown spec -- does \n have to proceed the code block end?
       // Because LLMs can't backtrack to escape a codeblock with more backticks after it's started
       // writing, we need to check \n before closing block to make sure it's actually the end
-      if (slice.startsWith('\n' + inCodeBlock)) {
-        const code = tokenSoFar.slice(inCodeBlock.length + inCodeLang.length + 1) // +1 for the newline
-        tokens.push([tokenSoFar + '\n' + inCodeBlock, 'code', inCodeLang, code + '\n'])
-        i += inCodeBlock.length
+      if (slice.startsWith(inCodeBlock.tag) && (inCodeBlock.padding === linePadding)) {
+        const code = tokenSoFar.slice(inCodeBlock.tag.length + inCodeLang.length + 1) // +1 for the newline after ```
+        tokens.push([tokenSoFar + inCodeBlock.tag, 'code', inCodeLang, code])
+        i += inCodeBlock.tag.length
         inCodeBlock = false
         tokenSoFar = ''
       } else {
         tokenSoFar += currentChar
       }
     } else {
+      if (lastChar === '\n' && slice.startsWith('    ')) {
+        // Handle tab preformatted text blocks.
+        // This is a bit tricky as we need to check if the last line is empty or a markdown header before
+        // we can allow a preformatted block to start. Also, multiple subsequent preformatted blocks should
+        // be concatenated, or even text blocks if they are empty, so we have to concat afterwards in postproc.
+        const lastLine = tokenSoFar.slice(0, -1).split('\n').pop()
+        if (lastLine.trim() === '' || lastLine.startsWith('#')) {
+          // 4-space code block for this whole line
+          tokens.push([tokenSoFar, 'text'])
+          tokenSoFar = ''
+          let lineEnd = slice.indexOf('\n')
+          if (lineEnd === -1) lineEnd = slice.length
+          const raw = slice.slice(0, lineEnd + 1)
+          const code = slice.slice(4, lineEnd)
+          tokens.push([raw, 'preformat', code])
+          i += lineEnd
+          continue
+        }
+      }
+      const preMatch = slice.match(/^<pre>/)
       const codeMatch = slice.match(/^([`]{3,})([a-zA-Z]*)\n/)
       if (codeMatch) {
         tokens.push([tokenSoFar, 'text'])
-        inCodeBlock = codeMatch[1]
+        inCodeBlock = { tag: codeMatch[1], padding: linePadding }
         inCodeLang = codeMatch[2]
         tokenSoFar = codeMatch[0]
+        i += tokenSoFar.length - 1
+      } else if (preMatch) {
+        tokens.push([tokenSoFar, 'text'])
+        inPreTag = true
+        tokenSoFar = preMatch[0]
         i += tokenSoFar.length - 1
       } else {
         tokenSoFar += currentChar
       }
     }
   }
+  // console.log('Tokens0', tokens)
+
   if (inCodeBlock) {
     if (options.allowMalformed) {
       tokens.push([tokenSoFar, 'text'])
@@ -468,7 +531,36 @@ function tokenizeMarkdown (comment, options) {
     }
   }
   tokens.push([tokenSoFar, 'text'])
-  return tokens
+
+  // Now we need to merge adjacent preformatted blocks or preformatted blocks with spacing text blocks between
+  const updated = []
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+    if (token[1] === 'preformat') {
+      let intermediateEmptyLines = ''
+      for (let j = i + 1; j < tokens.length; j++) {
+        const nextToken = tokens[j]
+        if (nextToken[1] === 'preformat') {
+          if (intermediateEmptyLines) {
+            const lineCount = count(intermediateEmptyLines, '\n')
+            token[0] += intermediateEmptyLines
+            token[2] += '\n'.repeat(lineCount)
+            intermediateEmptyLines = ''
+          }
+          token[0] += nextToken[0]
+          token[2] += '\n' + nextToken[2]
+          i = j
+        } else if (nextToken[1] === 'text' && nextToken[0].trim() === '') {
+          intermediateEmptyLines += nextToken[0]
+        } else {
+          break
+        }
+      }
+    }
+    updated.push(token)
+  }
+  // console.dir(updated, { depth: null })
+  return updated
 }
 
 // This mainly erases extraneous new lines outside of code blocks, including ones with empty block quotes
@@ -541,4 +633,4 @@ function stripDiff (diff, options = {}) {
   return result.join('\n')
 }
 
-module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, stripDiff, removeNonAscii, normalizeLineEndings, tokenizeMarkdown }
+module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, stripDiff, removeNonAscii, normalizeLineEndings, tokenizeMarkdown, stripXmlComments, stripMdpComments }
