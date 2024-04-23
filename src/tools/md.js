@@ -70,6 +70,8 @@ function parseMarkdown (text, options) {
       data.push({ type: 'pre', raw: token[0], lang: token[2], code: token[3] })
     } else if (token[1] === 'preformat') {
       data.push({ type: 'preformat', raw: token[0], code: token[2] })
+    } else if (token[1] === 'comment') {
+      data.push({ type: 'comment', raw: token[0] })
     }
   }
 

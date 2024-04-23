@@ -471,9 +471,12 @@ function tokenizeMarkdown (comment, options) {
         tokenSoFar += currentChar
       }
     } else if (inCodeBlock) {
-      // TODO: Check markdown spec -- does \n have to proceed the code block end?
-      // Because LLMs can't backtrack to escape a codeblock with more backticks after it's started
-      // writing, we need to check \n before closing block to make sure it's actually the end
+      // This handles backticks closing code blocks. It's tricky as the markdown spec isn't clear on this.
+      // On top of that, once LLMs start generating text (for example with 3 backticks), they can't backtrack
+      // and add more backticks to the enclosing codeblock to avoid escaping problems. This means it is not
+      // possible to ascertain starting and ending code blocks just by looking at n-back tick chars, we must
+      // also on top make sure the padding for the start/stop backtick'ed lines are the same. This seems to work
+      // well and also handles tabulation, for example a paragraph that's got 1-3 spaces of indent (4+ would be a pre block).
       if (slice.startsWith(inCodeBlock.tag) && (inCodeBlock.padding === linePadding)) {
         const code = tokenSoFar.slice(inCodeBlock.tag.length + inCodeLang.length + 1) // +1 for the newline after ```
         tokens.push([tokenSoFar + inCodeBlock.tag, 'code', inCodeLang, code])
@@ -502,6 +505,24 @@ function tokenizeMarkdown (comment, options) {
           i += lineEnd
           continue
         }
+      }
+      if (slice.startsWith('<!--')) { // Comment
+        const end = slice.indexOf('-->')
+        if (end === -1) {
+          if (options.allowMalformed) {
+            tokens.push([tokenSoFar, 'text'])
+            tokens.push([slice, 'comment'])
+            break
+          } else {
+            throw new Error('Unmatched markdown comment')
+          }
+        } else {
+          tokens.push([tokenSoFar, 'text'])
+          tokens.push([slice.slice(0, end + 3), 'comment'])
+          i += end + 2
+          tokenSoFar = ''
+        }
+        continue
       }
       const preMatch = slice.match(/^<pre>/)
       const codeMatch = slice.match(/^([`]{3,})([a-zA-Z]*)\n/)

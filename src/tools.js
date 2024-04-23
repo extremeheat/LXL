@@ -4,6 +4,7 @@ const xml = require('./tools/xml')
 const yaml = require('./tools/yaml')
 const stripping = require('./tools/stripping')
 const mdp = require('./tools/mdp')
+const md = require('./tools/md')
 
 function createTypeWriterEffectStream (to = process.stdout) {
   // Instead of writing everything at once, we want a typewriter effect
@@ -57,6 +58,7 @@ module.exports = {
   importPromptSync: mdp.importPromptSync,
   importPrompt: mdp.importPrompt,
   _segmentPromptByRoles: mdp.segmentByRoles,
+  _parseMarkdown: md.parseMarkdown,
   encodeYAML: yaml.encodeYaml,
   decodeXML: xml.decodeXML
 }

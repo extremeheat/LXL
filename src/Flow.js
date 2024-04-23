@@ -61,9 +61,9 @@ class Flow {
     resp.name = details.name
 
     if (details.outputType && details.outputType.codeblock) {
-      const supportedTypes = ['yaml', 'json']
+      const supportedTypes = ['yaml', 'json', 'md']
       if (!supportedTypes.includes(details.outputType.codeblock)) {
-        throw new Error(`Unsupported output type: ${details.outputType.codeblock}`)
+        throw new Error(`Unsupported output type: ${details.outputType.codeblock}. Supported types: ${supportedTypes.join(', ')}`)
       }
       // Abstraction to format/extract the desired format out of the response text, e.g. YAML, JSON, etc.
       if (!resp.text.includes('```')) throw new Error('No codeblock found in response')
