@@ -94,7 +94,7 @@ function collectFolderFiles (folder, options) {
 
 // This function will clone a github repo, review all the files and merge relevant files into a single file
 function collectGithubRepoFiles (repo, options) {
-  const exec = (cmd, args) => (options.verbose ? console.log('$', cmd, args) : null, cp.execSync(cmd, args))
+  const exec = (cmd, args) => (options.verbose ? console.log('$', cmd, args) : null, cp.execSync(cmd, args)) // eslint-disable-line no-sequences
   // First, try to clone the repo inside a "repos" folder in this directory
   const safeName = repo.replace(/\//g, ',')
   const reposDir = join(__dirname, 'repos')
