@@ -101,10 +101,11 @@ declare module 'langxlang' {
   interface CollectFolderOptions {
     // What extension/extension(s) of files in the repo to include
     extension?: string | string[]
-    // Either a function that returns true if the file should be included
-    // or an array of regexes of which one needs to match for inclusion
-    matching?: (fileName: string) => boolean | RegExp[]
+    // Either a function that returns true if the file should be included, or false if not (otherwise the call result is ignored).
+    // OR alternatively, pass an array of regexes of which one needs to match for inclusion.
+    matching?: ((relativePath: string, absolutePath: string, wouldBeExcluded: boolean) => boolean) | RegExp[]
     // An optional list of strings for which if the path starts with one of them, it's excluded, even if it was matched by `extension` or `matching`
+    // unless `matching` was a function and it explicitly returned `true` for the file.
     excluding?: Array<string | RegExp>
     // Try and cut down on the token size of the input by doing "stripping" to remove semantically unnecessary tokens from file
     strip?: StripOptions
@@ -122,7 +123,7 @@ declare module 'langxlang' {
     collectFolderFiles(folderPath: string, options: CollectFolderOptions): Promise<[absolutePath: string, relativePath: string, contents: string][]>
     // Returns a JS object with a list of files in a GitHub repo
     collectGithubRepoFiles(repo: string, options: CollectFolderOptions & {
-      // The branch to use
+      // The branch or ref to use
       branch?: string,
       // The URL to the repo, if it's not github.com
       url?: string,
@@ -160,7 +161,7 @@ declare module 'langxlang' {
       // Normalize line endings to \n
       normalizeLineEndings(str: string): string
       // Remove unnecessary keywords from a string
-      stripJava(input: string, options?: StripOptions): string
+      stripJava(input: string, options?: StripOptions & { removeStrings?: boolean }): string
       // Removes files from git diff matching the options.excluding regexes
       stripDiff(input: string, options?: { excluding: RegExp[] }): string
     }

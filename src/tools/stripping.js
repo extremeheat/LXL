@@ -91,11 +91,6 @@ function stripJava (code, options) {
     ['protected', 'private', 'public', 'final', 'abstract', 'synchronized', 'volatile', 'transient', 'native', 'strictfp']
 
   for (const entry of tokens) {
-    if (entry[1] === 'code') {
-      for (const forRemoval of syntaxTokensToRemove) {
-        entry[0] = entry[0].replace(new RegExp('\\b' + forRemoval + ' ', 'g'), '')
-      }
-    }
     if (options.removeAnnotations) {
       if (entry[1] === 'code') {
         // console.log('Removing annotations')
@@ -103,11 +98,17 @@ function stripJava (code, options) {
         const newLines = []
         for (const line of lines) {
           if (line.trim().startsWith('@')) {
+            newLines.push('//a/ ' + line) // mark for later removal
             continue
           }
           newLines.push(line)
         }
         entry[0] = newLines.join('\n')
+      }
+    }
+    if (entry[1] === 'code') {
+      for (const forRemoval of syntaxTokensToRemove) {
+        entry[0] = entry[0].replace(new RegExp('\\b' + forRemoval + ' ', 'g'), '')
       }
     }
   }
@@ -142,6 +143,10 @@ function stripJava (code, options) {
     }
   }
   newTokens = newTokens.filter(([tokenStr, tokenType]) => tokenStr !== '')
+  if (options.removeStrings) {
+    // turn strings to empty strings
+    newTokens = newTokens.map(([tokenStr, tokenType]) => tokenType === 'string' ? ['""', tokenType] : [tokenStr, tokenType])
+  }
 
   // Now iterate through the new tokens and remove code with empty space lines
   let result = ''
@@ -159,7 +164,13 @@ function stripJava (code, options) {
       result += tokenStr
     }
   }
-  return result
+  const lines = result.split('\n')
+  const finalLines = []
+  for (const line of lines) {
+    if (options.removeAnnotations && line.trim().startsWith('//a/ ')) continue
+    finalLines.push(line)
+  }
+  return finalLines.join('\n')
 }
 
 function stripPHP (code, options = {}) {
