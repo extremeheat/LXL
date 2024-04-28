@@ -4,6 +4,7 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/extremeheat/LXL)
 
 LangXLang (LXL) is a Node.js library and toolkit for using large language models (LLMs) inside software applications.
+
 LXL supports function calling, caching, prompt templating role play, and building complex conversational flows with LLMs.
 
 Supported models are:
