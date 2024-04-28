@@ -90,12 +90,9 @@ function stripJava (code, options) {
   const syntaxTokensToRemove = options.tokensToRemove ||
     ['protected', 'private', 'public', 'final', 'abstract', 'synchronized', 'volatile', 'transient', 'native', 'strictfp']
 
+  const ANNO_MARK = '//annotationForRemoval/ '
+
   for (const entry of tokens) {
-    if (entry[1] === 'code') {
-      for (const forRemoval of syntaxTokensToRemove) {
-        entry[0] = entry[0].replace(new RegExp('\\b' + forRemoval + ' ', 'g'), '')
-      }
-    }
     if (options.removeAnnotations) {
       if (entry[1] === 'code') {
         // console.log('Removing annotations')
@@ -103,11 +100,17 @@ function stripJava (code, options) {
         const newLines = []
         for (const line of lines) {
           if (line.trim().startsWith('@')) {
+            newLines.push(ANNO_MARK + line) // mark for later removal
             continue
           }
           newLines.push(line)
         }
         entry[0] = newLines.join('\n')
+      }
+    }
+    if (entry[1] === 'code') {
+      for (const forRemoval of syntaxTokensToRemove) {
+        entry[0] = entry[0].replace(new RegExp('\\b' + forRemoval + ' ', 'g'), '')
       }
     }
   }
@@ -142,6 +145,10 @@ function stripJava (code, options) {
     }
   }
   newTokens = newTokens.filter(([tokenStr, tokenType]) => tokenStr !== '')
+  if (options.removeStrings) {
+    // turn strings to empty strings
+    newTokens = newTokens.map(([tokenStr, tokenType]) => tokenType === 'string' ? ['""', tokenType] : [tokenStr, tokenType])
+  }
 
   // Now iterate through the new tokens and remove code with empty space lines
   let result = ''
@@ -149,7 +156,14 @@ function stripJava (code, options) {
     const [tokenStr, tokenType] = newTokens[i]
     if (tokenType === 'code') {
       const newStrLines = []
-      for (const line of tokenStr.split('\n')) {
+      const split = tokenStr.split('\n')
+      for (let j = 0; j < split.length; j++) {
+        // skip trimming the last line, prevent issues with the next token
+        if (j === split.length - 1) {
+          newStrLines.push(split[j])
+          continue
+        }
+        const line = split[j]
         if (line.trim() === '') continue
         newStrLines.push(line)
       }
@@ -159,7 +173,20 @@ function stripJava (code, options) {
       result += tokenStr
     }
   }
-  return result
+  const lines = result.split('\n')
+  const finalLines = []
+  for (const line of lines) {
+    if (options.removeAnnotations) {
+      if (line.trim().startsWith(ANNO_MARK)) {
+        continue
+      } else if (line.includes(ANNO_MARK)) {
+        finalLines.push(line.split(ANNO_MARK)[1])
+        continue
+      }
+    }
+    finalLines.push(line)
+  }
+  return finalLines.join('\n')
 }
 
 function stripPHP (code, options = {}) {
@@ -632,24 +659,95 @@ const DEFAULT_EXCLUDE = [/node_modules/, /\.git/, /\/build\//, /\/dist\//]
 function stripDiff (diff, options = {}) {
   const exclude = options.excluding || DEFAULT_EXCLUDE
   const lines = diff.split('\n')
-  const result = []
+  const inter = []
   let inExcluded = false
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const nextLine = lines[i + 1]
     if (line.startsWith('diff --git')) {
       inExcluded = exclude.some((ex) => ex.test(line))
+      if (options.matching) {
+        const file = line.split(' b/')[1]
+        let mode = 'modified'
+        if (nextLine.startsWith('new file')) mode = 'created'
+        else if (nextLine.startsWith('deleted file')) mode = 'deleted'
+        const matching = options.matching(file, mode, inExcluded)
+        if (matching === false) {
+          inExcluded = true
+          continue
+        }
+      }
       if (inExcluded) {
         // Treat this as a binary file
-        result.push(line)
-        result.push('index 0000000..0000000')
-        result.push('Binary files differ')
+        inter.push(line)
+        inter.push('index 0000000..0000000')
+        inter.push('Binary files differ')
       }
     }
     if (inExcluded) {
       continue
     }
-    result.push(line)
+    inter.push(line)
   }
-  return result.join('\n')
+
+  const regions = []
+  let currentFile
+  let currentFileIx
+  let currentFileContentsIx
+  for (let i = 0; i < inter.length; i++) {
+    const line = inter[i]
+    if (line.startsWith('diff --git')) {
+      if (currentFile) {
+        regions.push({ file: currentFile.trim(), start: currentFileIx, fileStart: currentFileContentsIx, end: i })
+        currentFileContentsIx = null
+      }
+      currentFile = line
+      currentFileIx = i
+    }
+    if (line.startsWith('@@')) {
+      currentFileContentsIx ||= i
+    }
+  }
+
+  regions.reverse() // we want to start from the bottom
+  const SIG_PLUS = '\t\t \t'
+  const SIG_MINUS = '\t \t\t'
+  const SUB_KEYWORD = `$STORED_${(Math.random() * 1000) | 0}_`
+  if (options.stripDiffFiles) {
+    function stripFile (region, usingMethod) {
+      const storedVariables = []
+      const slice = inter.slice(region.fileStart, region.end)
+        .map((line) => {
+          // We need to convert the git diff to normal Java so it can be stripped. But we need to keep the git data like @/+/-
+          // so we either sub+map and store or add a prefix signature (spacing is ignored so we can add a space based prefix)
+          if (line.startsWith('@@')) {
+            const forStore = line.split(' @@')
+            storedVariables.push(forStore[0] + ' @@')
+            return SUB_KEYWORD + storedVariables.length + forStore[1]
+          } else if (line.startsWith('+')) {
+            return SIG_PLUS + line.slice(1)
+          } else if (line.startsWith('-')) {
+            return SIG_MINUS + line.slice(1)
+          }
+          return line
+        })
+      const sliceStr = slice.join('\n')
+      let stripped = usingMethod(sliceStr, options)
+        .replaceAll(SIG_PLUS, '+')
+        .replaceAll(SIG_MINUS, '-')
+      for (let i = storedVariables.length - 1; i >= 0; i--) {
+        stripped = stripped.replace(SUB_KEYWORD + (i + 1), storedVariables[i])
+      }
+      const strippedLines = stripped.split('\n')
+      inter.splice(region.fileStart, region.end - region.fileStart, ...strippedLines)
+    }
+    for (const region of regions) {
+      if (!region.fileStart) continue
+      if (region.file.endsWith('.java')) stripFile(region, stripJava)
+    }
+  }
+  const result = inter.join('\n')
+  return result
 }
 
 module.exports = { stripJava, stripPHP, stripGo, stripMarkdown, stripDiff, removeNonAscii, normalizeLineEndings, tokenizeMarkdown, stripXmlComments, stripMdpComments }

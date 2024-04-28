@@ -40,9 +40,14 @@ function collectFolderFiles (folder, options) {
     } else if (extension && !file.endsWith(extension)) {
       continue
     }
+    const wouldBeExcluded = excluding.some(ex => (typeof ex === 'string') ? relFile.startsWith(ex) : relFile.match(ex))
     if (options.matching) {
       if (typeof options.matching === 'function') {
-        if (!options.matching(relFile)) {
+        const matching = options.matching(relFile, file, wouldBeExcluded)
+        if (matching === false) {
+          continue
+        } else if (matching === true) {
+          relevantFiles.push([file, relFile])
           continue
         }
       } else if (Array.isArray(options.matching)) {
@@ -53,7 +58,7 @@ function collectFolderFiles (folder, options) {
         throw new Error('options.matching must be a function or an array of regexes or strings')
       }
     }
-    if (excluding.some(ex => (typeof ex === 'string') ? relFile.startsWith(ex) : relFile.match(ex))) {
+    if (wouldBeExcluded) {
       continue
     }
     relevantFiles.push([file, relFile])
@@ -89,7 +94,7 @@ function collectFolderFiles (folder, options) {
 
 // This function will clone a github repo, review all the files and merge relevant files into a single file
 function collectGithubRepoFiles (repo, options) {
-  const branch = options.branch || 'master'
+  const exec = (cmd, args) => (options.verbose ? console.log('$', cmd, args) : null, cp.execSync(cmd, args)) // eslint-disable-line no-sequences
   // First, try to clone the repo inside a "repos" folder in this directory
   const safeName = repo.replace(/\//g, ',')
   const reposDir = join(__dirname, 'repos')
@@ -97,12 +102,15 @@ function collectGithubRepoFiles (repo, options) {
   fs.mkdirSync(reposDir, { recursive: true })
   if (!fs.existsSync(repoPath)) {
     const url = options.url || `https://${options.token ? options.token + '@' : ''}github.com/${repo}.git`
-    cp.execSync(`git clone ${url} ${safeName} --depth 1`, { cwd: reposDir })
+    exec(`git clone ${url} ${safeName} --depth 1`, { cwd: reposDir })
   }
+  const defaultBranch = exec('git rev-parse --abbrev-ref HEAD', { cwd: repoPath }).toString().trim()
+  const branch = options.branch || defaultBranch
+  const baseRef = branch.replace(/\^|~/g, '')
   // Git pull origin/$branch
-  cp.execSync(`git pull origin ${branch}`, { cwd: repoPath })
+  exec(`git fetch origin "${baseRef}"`, { cwd: repoPath })
   // Check out the branch
-  cp.execSync(`git checkout ${branch}`, { cwd: repoPath })
+  exec(`git checkout "${branch}"`, { cwd: repoPath })
   return collectFolderFiles(repoPath, options)
 }
 
