@@ -4,6 +4,9 @@
   "description": "LLM wrapper for OpenAI GPT and Google Gemini and PaLM 2 models",
   "main": "src/index.js",
   "types": "src/index.d.ts",
+  "bin": {
+    "langxlang": "bin/cli.js"
+  },
   "scripts": {
     "test": "npm run mocha",
     "pretest": "npm run lint",
