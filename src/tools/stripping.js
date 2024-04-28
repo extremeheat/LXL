@@ -130,7 +130,7 @@ function stripJava (code, options) {
   // First, make a new set of tokens, removing comments if the user wants
   let newTokens = []
   for (const [tokenStr, tokenType] of tokens) {
-    if (options.removeComments && (tokenType === 'multi-line-comment' || tokenType === 'single-line-comment') && !tokenStr.includes('/*@@')) {
+    if (options.removeComments && (tokenType === 'multi-line-comment' || tokenType === 'single-line-comment')) {
       continue
     }
     newTokens.push([tokenStr, tokenType])
@@ -712,17 +712,18 @@ function stripDiff (diff, options = {}) {
   regions.reverse() // we want to start from the bottom
   const SIG_PLUS = '\t\t \t'
   const SIG_MINUS = '\t \t\t'
+  const SUB_KEYWORD = `$STORED_${(Math.random() * 1000) | 0}_`
   if (options.stripDiffFiles) {
     function stripFile (region, usingMethod) {
       const storedVariables = []
       const slice = inter.slice(region.fileStart, region.end)
         .map((line) => {
           // We need to convert the git diff to normal Java so it can be stripped. But we need to keep the git data like @/+/-
-          // so we either map and store or add a prefix signature (spacing is ignored so we can add a space based prefix)
+          // so we either sub+map and store or add a prefix signature (spacing is ignored so we can add a space based prefix)
           if (line.startsWith('@@')) {
             const forStore = line.split(' @@')
             storedVariables.push(forStore[0] + ' @@')
-            return '$STORED_' + storedVariables.length + forStore[1]
+            return SUB_KEYWORD + storedVariables.length + forStore[1]
           } else if (line.startsWith('+')) {
             return SIG_PLUS + line.slice(1)
           } else if (line.startsWith('-')) {
@@ -735,7 +736,7 @@ function stripDiff (diff, options = {}) {
         .replaceAll(SIG_PLUS, '+')
         .replaceAll(SIG_MINUS, '-')
       for (let i = storedVariables.length - 1; i >= 0; i--) {
-        stripped = stripped.replace('$STORED_' + (i + 1), storedVariables[i])
+        stripped = stripped.replace(SUB_KEYWORD + (i + 1), storedVariables[i])
       }
       const strippedLines = stripped.split('\n')
       inter.splice(region.fileStart, region.end - region.fileStart, ...strippedLines)
