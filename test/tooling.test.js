@@ -65,6 +65,15 @@ describe('stripping', function () {
     assert.strictEqual(block.raw.length, 867)
     assert.strictEqual(block.code.length, 858)
   })
+  it('on java', function () {
+    const s = `
+public static final EntityType<Boat> BOAT = register(
+  "boat", EntityType.Builder.<Boat>of(Boat::new, MobCategory.MISC).sized(1.375F, 0.5625F).eyeHeight(0.5625F).clientTrackingRange(10)
+)`
+    const strip = tools.stripping.stripJava(s, { removeComments: true, removeAnnotations: true, removeStrings: false })
+    // ~mostly the same but with some syntax modifiers removed
+    assert.strictEqual(s.trim().replace('public static final', 'static'), strip.trim())
+  })
 })
 
 const testObject = {
