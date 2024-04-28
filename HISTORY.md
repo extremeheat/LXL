@@ -1,4 +1,32 @@
-### 0.6.1
+## 0.7.0
+### Breaking
+* Remove old "guidance regions"
+* Flow arguments for prompt handling have been updated.
+  * `prompt: string` replaced with `prompt: { system?: string, user?: string }` or `prompt: { text: string, roles: Record<string, Role> }` to support new role handling.
+
+### Features
+* Support "role" splitting in markdown processor. See docs/MarkdownProcessor.md's role section for doc.
+  * calling loadPrompt() now accepts a new arg, options, which can take an a "role" field, set to a Record<string, string> map. The keys are the tokens to split by and the values are the roles.
+* Add "requestChatCompletion" API method on CompletionService for sending messages to models
+  * Supports caching
+* Old "guidance regions" removed from `requestCompletion()` in favor of a new "guidance" role in messages which can be used now via "requestChatCompletion"
+* Markdown processor now strips markdown comments out
+* `content` and `text` are returned on all completion requests, whether chat or not
+* Add a basic token counting bin script for counting GPT-4 tokens (`npx langxlang count gpt4 file.txt`)
+
+### Fixes
+* Fix caching issues in CompletionService for requestCompletion
+* Fixes to markdown tokenization (handle comments, preformatted blocks)
+* Fix Flow transformResponse
+
+### Changelog
+* [Bump @google/generative-ai from 0.7.1 to 0.8.0 (#36)](https://github.com/extremeheat/LXL/commit/b3169cde485c19e038aeb7e86b40cd0f6653c7ca) (thanks @dependabot[bot])
+* [tools: Improvements to stripping and code collection, add a token counting bin script (#37)](https://github.com/extremeheat/LXL/commit/41d49fbe6849fb18bc538e24db09735a7fb81fd1) (thanks @extremeheat)
+* [Add role splitting in markdown processor, remove old guidance regions (#34)](https://github.com/extremeheat/LXL/commit/f4840f6b2072975da01d8c332b10bfc6944c97ea) (thanks @extremeheat)
+* [Support stop sequences, generation options in ChatSession, AIStudio improvements (#33)](https://github.com/extremeheat/LXL/commit/b72066f2f53b5c52bda39db71ea9cfd39b192e20) (thanks @extremeheat)
+* [Update examples](https://github.com/extremeheat/LXL/commit/e290f43847ea1c2cbe1bf4dfaebdb8e236e26b09) (thanks @extremeheat)
+
+## 0.6.1
 * [Bump @google/generative-ai from 0.6.0 to 0.7.1 (#30)](https://github.com/extremeheat/LXL/commit/7e0389feac29fd6bb4505cd780166e6be65b1e91) (thanks @dependabot[bot])
 * [Fix Gemini completions not emitting stop chunk](https://github.com/extremeheat/LXL/commit/f44f5641e58154dc6fb1cd3cfc45fb6da3e033a6) (thanks @extremeheat)
 
