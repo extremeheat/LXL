@@ -167,6 +167,9 @@ declare module 'langxlang' {
     }
     // Extracts code blocks from markdown
     extractCodeblockFromMarkdown(markdownInput: string): { raw: string, lang: string, code: string }[]
+    // Extracts function calls from a string that are wrapped in a specific enclosing sequence (like `<FUNCTION_CALL>some_method("some_arg", 1, [2])</FUNCTION_CALL>`).
+    // Note if you use a stop sequence after a fn call, don't pass a closing sequence as may not be present.
+    extractJSFunctionCall(str: string, enclosing?: string, closing?: string): { name: string, args: string[] }
     // Wraps the contents by using the specified token character at least 3 times,
     // ensuring that the token is long enough that it's not present in the content
     wrapContent(content: string, withChar?: string, initialTokenSuffix?: string): string
