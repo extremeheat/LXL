@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LXL Log</title>
+</head>
+<style>
+  body {
+    font-family: sans-serif;
+  }
+
+  .message {
+    display: grid;
+    /* grid-template-columns: 1fr 8fr; */
+    grid-template-columns: 160px calc(100vw - 160px);
+    margin-bottom: 1rem;
+
+    & pre {
+      white-space: break-spaces;
+    }
+  }
+
+  .role {
+    width: 160px;
+  }
+
+  a {
+    text-decoration: none;
+  }
+</style>
+
+<body>
+  <h3>LXL Session Log &mdash; <span id="session-date"></span></h3>
+  <hr>
+  <div id="messages"></div>
+</body>
+<script>
+  document.getElementById('session-date').innerText = window.$DATE || new Date().toDateString()
+  const messages = window.$ENTRIES || [
+    { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString(), messages: [{ role: 'user', contents: 'Hello!' }] },
+    { role: 'model', content: 'This\nworks', model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString() }
+  ]
+  function addMessage({ role, model, on, content, messages, generationOptions }, i) {
+    // const html = `
+    //   <div class="message">
+    //     <div class="role">
+    //       <strong>Model</strong><br/>
+    //       <small>${model}<br/>
+    //         ${on}<br/>
+    //         <a href="javascript:void">Copy Response</a>
+    //       </small>
+    //     </div>
+    //     <div class="contents"><pre id="contents1">${str}</pre></div>
+    //   </div>
+    // `
+    if (role === 'user' && !content) {
+      content = messages.map(({ role, contents }) => `<|${role.toUpperCase()}|>\n${contents}`).join('\n')
+    }
+    function onCopyContent() {
+      navigator.clipboard.writeText(content)
+    }
+    function onCopyCode() {
+      function stringify (content, withPadding = '') {
+        return JSON.stringify(content, null, 2).split('\n').map((line, i) => i === 0 ? line : withPadding + line).join('\n')
+      }
+      const data = messages ? `
+const { CompletionService } = require('langxlang')
+async function main () {
+  const service = new CompletionService()
+  const [response] = await service.requestChatCompletion(${JSON.stringify(model)}, {
+    messages: ${stringify(messages, '    ')},
+    generationOptions: ${stringify(generationOptions || {}, '    ')}
+  })
+  console.log(response)
+}
+`.trim() :
+        `
+const { CompletionService } = require('langxlang')
+async function main () {
+  const service = new CompletionService()
+  const [response] = await service.requestCompletion(
+    ${stringify(model, '    ')},
+    '', /* system */
+    ${stringify(content, '    ')}, /* user */
+    null, /* chunk cb */
+    JSON.stringify(generationOptions || {}, null, 2) /* generation options */
+  )
+  console.log(response)
+}
+`.trim()
+      navigator.clipboard.writeText(data)
+    }
+    const buttons = role === 'user'
+      ? [
+        ['Copy Request JSON', () => navigator.clipboard.writeText(JSON.stringify(messages))],
+        ['Copy Request MD', onCopyContent],
+        ['Copy Replay Code', onCopyCode]
+      ]
+      : [
+        ['Copy Response', onCopyContent]
+      ]
+    const roleName = role === 'user' ? 'Request' : 'Model'
+    const div = document.createElement('div')
+    div.className = 'message'
+    const roleEl = document.createElement('div')
+    roleEl.className = 'role'
+    const strong = document.createElement('strong')
+    strong.innerText = roleName
+    const small = document.createElement('small')
+    {
+      const modelEl = document.createElement('span')
+      modelEl.innerText = model
+      const onEl = document.createElement('span')
+      onEl.innerText = on
+      small.appendChild(modelEl)
+      small.appendChild(document.createElement('br'))
+      small.appendChild(onEl)
+      small.appendChild(document.createElement('br'))
+      for (const [name, action] of buttons) {
+        const copy = document.createElement('a')
+        copy.onclick = action
+        copy.href = 'javascript:void'
+        copy.innerText = name
+        small.appendChild(copy)
+        small.appendChild(document.createElement('br'))
+      }
+    }
+    roleEl.appendChild(strong)
+    roleEl.appendChild(document.createElement('br'))
+    roleEl.appendChild(small)
+    const contents = document.createElement('div')
+    contents.className = 'contents'
+    const pre = document.createElement('pre')
+    pre.id = 'contents-' + i
+    pre.innerText = content
+    contents.appendChild(pre)
+    div.appendChild(roleEl)
+    div.appendChild(contents)
+    document.getElementById('messages').appendChild(div)
+  }
+
+  for (let i = 0; i < messages.length; i++) {
+    addMessage(messages[i], i)
+  }
+</script>
+
+</html>

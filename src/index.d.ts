@@ -26,6 +26,11 @@ declare module 'langxlang' {
 
     cachePath: string
 
+    // Start logging LLM requests
+    startLogging(): boolean
+    // Stop logging LLM requests, return the HTML of the log
+    stopLogging(): { exportHTML: () => string }
+
     listModels(): Promise<{ openai: Record<string, object>, google: Record<string, object> }>
 
     // Request a completion from the model with a system prompt and a single user prompt.

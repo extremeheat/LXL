@@ -3,6 +3,7 @@ const palm2 = require('./palm2')
 const gemini = require('./gemini')
 const { cleanMessage, getModelInfo, checkDoesGoogleModelSupportInstructions, checkGuidance, knownModels } = require('./util')
 const caching = require('./caching')
+const logging = require('./tools/logging')
 
 class CompletionService {
   constructor (keys, options = {}) {
@@ -17,6 +18,18 @@ class CompletionService {
     this.openaiApiKey = keys.openai || process.env.OPENAI_API_KEY
 
     this.defaultGenerationOptions = options.generationOptions
+  }
+
+  startLogging () {
+    this.log = []
+  }
+
+  stopLogging () {
+    const log = this.log
+    this.log = null
+    return {
+      exportHTML: () => logging.createHTML(log)
+    }
   }
 
   async listModels () {
@@ -54,14 +67,14 @@ class CompletionService {
       if (cachedResponse) {
         chunkCb?.({ done: false, content: cachedResponse.text })
         chunkCb?.({ done: true, delta: '' })
-        return cachedResponse
+        return [cachedResponse]
       }
     }
-    function saveIfCaching (responses) {
-      for (const response of responses) {
-        if (response && response.content && options.enableCaching) {
-          caching.addResponseToCache(model, [system, user], response)
-        }
+    const saveIfCaching = (responses) => {
+      this.log?.push({ model, system, user, responses, date: new Date() })
+      const [response] = responses
+      if (response && response.content && options.enableCaching) {
+        caching.addResponseToCache(model, [system, user], response)
       }
       return responses
     }
@@ -178,14 +191,14 @@ class CompletionService {
       if (cachedResponse) {
         chunkCb?.({ done: false, content: cachedResponse.text })
         chunkCb?.({ done: true, delta: '' })
-        return cachedResponse
+        return [cachedResponse]
       }
     }
-    function saveIfCaching (responses) {
-      for (const response of responses) {
-        if (response && response.content && enableCaching) {
-          caching.addResponseToCache(model, messages, response)
-        }
+    const saveIfCaching = (responses) => {
+      this.log?.push({ model, messages, responses, generationOptions, date: new Date() })
+      const [response] = responses
+      if (response && response.content && enableCaching) {
+        caching.addResponseToCache(model, messages, response)
       }
       return responses
     }
