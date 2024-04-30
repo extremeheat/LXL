@@ -13,7 +13,6 @@
 
   .message {
     display: grid;
-    /* grid-template-columns: 1fr 8fr; */
     grid-template-columns: 160px calc(100vw - 160px);
     margin-bottom: 1rem;
 
@@ -39,7 +38,7 @@
 <script>
   document.getElementById('session-date').innerText = window.$DATE || new Date().toDateString()
   const messages = window.$ENTRIES || [
-    { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString(), messages: [{ role: 'user', contents: 'Hello!' }] },
+    { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date(), messages: [{ role: 'user', contents: 'Hello!' }] },
     { role: 'model', content: 'This\nworks', model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString() }
   ]
   function addMessage({ role, model, on, content, messages, generationOptions }, i) {
@@ -56,7 +55,7 @@
     //   </div>
     // `
     if (role === 'user' && !content) {
-      content = messages.map(({ role, contents }) => `<|${role.toUpperCase()}|>\n${contents}`).join('\n')
+      content = messages.map((entry) => `<|${entry.role.toUpperCase()}|>\n${entry.content || JSON.stringify(entry.parts)}`).join('\n')
     }
     function onCopyContent() {
       navigator.clipboard.writeText(content)
@@ -113,7 +112,7 @@ async function main () {
       const modelEl = document.createElement('span')
       modelEl.innerText = model
       const onEl = document.createElement('span')
-      onEl.innerText = on
+      onEl.innerText = new Date(on).toLocaleString()
       small.appendChild(modelEl)
       small.appendChild(document.createElement('br'))
       small.appendChild(onEl)
