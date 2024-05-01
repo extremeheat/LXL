@@ -19,7 +19,7 @@ function createHTML (log) {
       on: new Date(entry.date).toISOString(),
       role: 'model',
       model: entry.model,
-      content: entry.responses[0].content
+      content: entry.responses[0].content || JSON.stringify(entry.responses[0])
     })
   }
   return getHTML({

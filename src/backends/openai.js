@@ -1,7 +1,7 @@
 const OpenAI = require('openai')
 const https = require('https')
 const debug = require('debug')('lxl')
-const SafetyError = require('./SafetyError')
+const SafetyError = require('../SafetyError')
 
 function safetyCheck (choices) {
   const hasSafetyFlag = choices.some((choice) => choice.finishReason === 'content_filter')

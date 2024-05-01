@@ -1,6 +1,6 @@
-const openai = require('./openai')
-const palm2 = require('./palm2')
-const gemini = require('./gemini')
+const openai = require('./backends/openai')
+const palm2 = require('./backends/palm2')
+const gemini = require('./backends/gemini')
 const { cleanMessage, getModelInfo, checkDoesGoogleModelSupportInstructions, checkGuidance, knownModels } = require('./util')
 const caching = require('./caching')
 const logging = require('./tools/logging')
@@ -71,7 +71,7 @@ class CompletionService {
       }
     }
     const saveIfCaching = (responses) => {
-      this.log?.push({ model, system, user, responses, date: new Date() })
+      this.log?.push(structuredClone({ model, system, user, responses, date: new Date() }))
       const [response] = responses
       if (response && response.content && options.enableCaching) {
         caching.addResponseToCache(model, [system, user], response)
@@ -195,7 +195,7 @@ class CompletionService {
       }
     }
     const saveIfCaching = (responses) => {
-      this.log?.push({ model, messages, responses, generationOptions, date: new Date() })
+      this.log?.push(structuredClone({ model, messages, responses, generationOptions, date: new Date() }))
       const [response] = responses
       if (response && response.content && enableCaching) {
         caching.addResponseToCache(model, messages, response)

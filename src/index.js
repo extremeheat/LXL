@@ -1,6 +1,3 @@
-const openai = require('./openai')
-const palm2 = require('./palm2')
-const gemini = require('./gemini')
 const { appDataDir, CompletionService } = require('./CompletionService')
 const GoogleAIStudioCompletionService = require('./GoogleAIStudioCompletionService')
 const ChatSession = require('./ChatSession')
@@ -15,9 +12,6 @@ module.exports = {
   GoogleAIStudioCompletionService,
   ChatSession,
   Flow,
-  openai,
-  palm2,
-  gemini,
   Func: { Arg: functions.Arg, Desc: functions.Desc },
   tools,
   importPromptSync: tools.importPromptSync,
