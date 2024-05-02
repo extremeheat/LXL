@@ -1,9 +1,9 @@
-const { encodeYaml } = require('./tools/yaml')
+const { encodeYaml } = require('../tools/yaml')
 const WebSocket = require('ws')
 const debug = require('debug')('lxl')
 const { EventEmitter } = require('events')
-const { importPromptRaw, loadPrompt } = require('./tools/mdp')
-const { sleep } = require('./util')
+const { importPromptRaw, loadPrompt } = require('../tools/mdp')
+const { sleep } = require('../util')
 
 // There are 2 ways to use the AI Studio server:
 // 1. Run a local server that a local AI Studio client can connect to

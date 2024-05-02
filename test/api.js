@@ -1,6 +1,6 @@
 /* eslint-env mocha */
 // @ts-check
-const { CompletionService, ChatSession, Func: { Arg, Desc }, loadPrompt } = require('langxlang')
+const { CompletionService, ChatSession, Func: { Arg, Desc }, tools: { loadPrompt } } = require('langxlang')
 const fs = require('fs')
 const assert = require('assert')
 const openAIKey = fs.readFileSync('openai.key', 'utf8')
@@ -10,8 +10,6 @@ const guidanceStr = `Please convert this YAML to JSON:
 name: AI
 age: 30
 \`\`\`
-%%%$GUIDANCE_START$%%%
-\`\`\`json
 `
 
 console.log('OpenAI key', openAIKey)
@@ -45,14 +43,25 @@ async function testGeminiCompletion (model = 'gemini-1.0-pro') {
 async function testGuidance () {
   // EXPECTED = '```json\n{\n  "name": "AI",\n  "age": 30\n}\n```'
   const q = loadPrompt(guidanceStr, {})
-  const [result] = await completionService.requestCompletion('gpt-3.5-turbo', '', q)
+  const [result] = await completionService.requestChatCompletion('gpt-3.5-turbo', {
+    messages: [
+      { role: 'user', content: guidanceStr },
+      { role: 'guidance', content: '```json\n' }
+    ]
+  })
   console.log('GPT-3.5 result for', q)
   console.log(result)
   assert(result.text.trim().startsWith('```json\n') && result.text.trim().endsWith('```'), 'Guidance not followed by GPT-3.5')
-  const [result2] = await completionService.requestCompletion('gemini-1.0-pro', '', q)
-  console.log('Gemini result for', q)
-  console.log(result2)
-  assert(result.text.trim().startsWith('```json\n') && result.text.trim().endsWith('```'), 'Guidance not followed by Gemini 1.0')
+  // Gemini API no longer supports guidance (last model message)
+  // const [result2] = await completionService.requestChatCompletion('gemini-1.0-pro', {
+  //   messages: [
+  //     { role: 'user', content: guidanceStr },
+  //     { role: 'guidance', content: '```json\n' }
+  //   ]
+  // })
+  // console.log('Gemini result for', q)
+  // console.log(result2)
+  // assert(result.text.trim().startsWith('```json\n') && result.text.trim().endsWith('```'), 'Guidance not followed by Gemini 1.0')
 }
 
 function toTerminal (chunk) {
@@ -162,6 +171,7 @@ async function testOptions () {
 }
 
 async function testBasic () {
+  completionService.startLogging()
   await testListing()
   await testOpenAICompletion()
   await testGeminiCompletion('gemini-1.0-pro')
@@ -174,7 +184,9 @@ async function testBasic () {
   await testGeminiSessionWithFuncs('gemini-1.5-pro-latest')
   await testOpenAICaching()
   await testOptions()
-
+  const log = completionService.stopLogging()
+  const html = log.exportHTML()
+  fs.writeFileSync('log.html', html)
   console.log('All Good!')
 }
 

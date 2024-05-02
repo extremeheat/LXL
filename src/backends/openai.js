@@ -1,7 +1,7 @@
 const OpenAI = require('openai')
 const https = require('https')
 const debug = require('debug')('lxl')
-const SafetyError = require('./SafetyError')
+const SafetyError = require('../SafetyError')
 
 function safetyCheck (choices) {
   const hasSafetyFlag = choices.some((choice) => choice.finishReason === 'content_filter')
@@ -19,6 +19,7 @@ function safetyCheck (choices) {
 
 function createChunkProcessor (chunkCb, resultChoices) {
   return function (chunk) {
+    // debug('[OpenAI] Chunk', JSON.stringify(chunk))
     if (!chunk) {
       chunkCb?.({ done: true, delta: '' })
       return

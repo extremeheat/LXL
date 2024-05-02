@@ -1,5 +1,5 @@
 const caching = require('./caching')
-const studioLoader = require('./googleAIStudio')
+const studioLoader = require('./backends/googleAIStudio')
 const util = require('./util')
 
 const supportedModels = ['gemini-1.0-pro', 'gemini-1.5-pro']

@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 const debug = require('debug')('lxl')
-const utils = require('./util')
-const SafetyError = require('./SafetyError')
+const utils = require('../util')
+const SafetyError = require('../SafetyError')
 
 const defaultSafety = [
   { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },

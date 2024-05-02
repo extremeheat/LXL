@@ -42,6 +42,24 @@ function extractCodeblockFromMarkdown (md) {
   }, [])
 }
 
+function extractJSFunctionCall (text, enclosing = '<FUNCTION_CALL>', closing) {
+  if (text.includes(enclosing)) {
+    let slice
+    const start = text.indexOf(enclosing)
+    if (closing) {
+      const end = text.indexOf(closing)
+      slice = text.slice(start, end + closing.length)
+    } else {
+      slice = text.slice(start)
+    }
+    const fnName = slice.slice(enclosing.length, slice.indexOf('('))
+    const args = slice.slice(slice.indexOf('(') + 1, slice.lastIndexOf(')'))
+    const argsEncapsulated = '[' + args + ']'
+    const argsArray = JSON.parse(argsEncapsulated)
+    return { name: fnName, args: argsArray }
+  }
+}
+
 module.exports = {
   makeVizForPrompt: viz.makeVizForPrompt,
   stripping,
@@ -50,6 +68,7 @@ module.exports = {
   concatFilesToMarkdown: codebase.concatFilesToMarkdown,
   createTypeWriterEffectStream,
   extractCodeblockFromMarkdown,
+  extractJSFunctionCall,
   wrapContent: mdp.wrapContentWithSufficientTokens,
   preMarkdown: mdp.preMarkdown,
   loadPrompt: mdp.loadPrompt,
