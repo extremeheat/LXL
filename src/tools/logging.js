@@ -13,13 +13,16 @@ function createHTML (log) {
       role: 'user',
       model: entry.model,
       content: entry.messages ? null : [entry.system, entry.user].join('\n'),
-      messages: entry.messages
+      messages: entry.messages,
+      generationOptions: entry.generationOptions
     })
     entries.push({
       on: new Date(entry.date).toISOString(),
       role: 'model',
       model: entry.model,
-      content: entry.responses[0].content || JSON.stringify(entry.responses[0])
+      content: entry.responses[0].content || JSON.stringify(entry.responses[0]),
+      // Don't include unnecessary generation options
+      generationOptions: { ...entry.generationOptions, maxTokens: undefined, stopSequences: undefined, enableCaching: undefined }
     })
   }
   return getHTML({

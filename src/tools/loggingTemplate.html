@@ -41,7 +41,7 @@
     { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date(), messages: [{ role: 'user', contents: 'Hello!' }] },
     { role: 'model', content: 'This\nworks', model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString() }
   ]
-  function addMessage({ role, model, on, content, messages, generationOptions }, i) {
+  function addMessage({ role, model, on, content, messages, generationOptions = {} }, i) {
     // const html = `
     //   <div class="message">
     //     <div class="role">
@@ -61,7 +61,7 @@
       navigator.clipboard.writeText(content)
     }
     function onCopyCode() {
-      function stringify (content, withPadding = '') {
+      function stringify(content, withPadding = '') {
         return JSON.stringify(content, null, 2).split('\n').map((line, i) => i === 0 ? line : withPadding + line).join('\n')
       }
       const data = messages ? `
@@ -84,7 +84,7 @@ async function main () {
     '', /* system */
     ${stringify(content, '    ')}, /* user */
     null, /* chunk cb */
-    JSON.stringify(generationOptions || {}, null, 2) /* generation options */
+    ${stringify(generationOptions || {}, '    ')} /* generate options */
   )
   console.log(response)
 }
@@ -117,6 +117,12 @@ async function main () {
       small.appendChild(document.createElement('br'))
       small.appendChild(onEl)
       small.appendChild(document.createElement('br'))
+      if (role === 'model') for (const key in generationOptions) {
+        const optionEl = document.createElement('span')
+        optionEl.innerText = `*${key}: ${generationOptions[key]}`
+        small.appendChild(optionEl)
+        small.appendChild(document.createElement('br'))
+      }
       for (const [name, action] of buttons) {
         const copy = document.createElement('a')
         copy.onclick = action

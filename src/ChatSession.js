@@ -152,32 +152,20 @@ class ChatSession {
     return response
   }
 
-  async sendMessage (message, chunkCb, options) {
-    await this.loading
-    const content = message.basePrompt ?? message.valueOf()
-    this.messages.push({ role: 'user', content })
-    let guidance
-    if (message.guidanceText) {
-      guidance = { role: 'guidance', content: message.guidanceText }
-      this.messages.push(guidance)
-      chunkCb?.({ done: false, delta: message.guidanceText, content: message.guidanceText })
-    }
+  async _sendMessages (chunkCb, options) {
     this._calledFunctionsForRound = []
     const response = await this._submitRequest(options, chunkCb)
-    if (message.guidanceText) {
-      // update the current model output with the guidance message
-      const last = this.messages[this.messages.length - 1]
-      last.content = message.guidanceText + last.content
-      // remove the guidance message from the response
-      for (let i = 0; i < this.messages.length; i++) {
-        if (this.messages[i] === guidance) {
-          this.messages.splice(i, 1)
-          break
-        }
-      }
-      response.content = message.guidanceText + response.content
+    const guidanceIx = this.messages.findIndex(m => m.role === 'guidance')
+    if (guidanceIx !== -1) {
+      this.messages.splice(guidanceIx, 1)
     }
     return { content: response.content, text: response.content, calledFunctions: this._calledFunctionsForRound }
+  }
+
+  async sendMessage (message, chunkCb, options) {
+    await this.loading
+    this.messages.push({ role: 'user', content: message })
+    return this._sendMessages(chunkCb, options)
   }
 }
 

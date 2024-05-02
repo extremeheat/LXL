@@ -70,8 +70,13 @@ class CompletionService {
         return [cachedResponse]
       }
     }
+    const genOpts = {
+      ...this.defaultGenerationOptions,
+      ...options,
+      enableCaching: false // already handle caching here, as some models alias to chat we don't want to cache twice.
+    }
     const saveIfCaching = (responses) => {
-      this.log?.push(structuredClone({ model, system, user, responses, date: new Date() }))
+      this.log?.push(structuredClone({ model, system, user, responses, generationOptions: genOpts, date: new Date() }))
       const [response] = responses
       if (response && response.content && options.enableCaching) {
         caching.addResponseToCache(model, [system, user], response)
@@ -79,11 +84,6 @@ class CompletionService {
       return responses
     }
 
-    const genOpts = {
-      ...this.defaultGenerationOptions,
-      ...options,
-      enableCaching: false // already handle caching here, as some models alias to chat we don't want to cache twice.
-    }
     const { family } = getModelInfo(model)
     switch (family) {
       case 'openai': return saveIfCaching(await this._requestCompletionOpenAI(model, system, user, genOpts))
@@ -129,7 +129,7 @@ class CompletionService {
         content_filter: 'safety', // an error would be thrown before this
         tool_calls: 'function'
       }[choice.finishReason] ?? 'unknown'
-      const content = guidance ? guidance.content + choice.content : choice.content
+      const content = guidance ? guidance + choice.content : choice.content
       return { type: choiceType, isTruncated: choice.finishReason === 'length', ...choice, content, text: content }
     })
   }

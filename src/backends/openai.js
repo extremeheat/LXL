@@ -19,6 +19,7 @@ function safetyCheck (choices) {
 
 function createChunkProcessor (chunkCb, resultChoices) {
   return function (chunk) {
+    // debug('[OpenAI] Chunk', JSON.stringify(chunk))
     if (!chunk) {
       chunkCb?.({ done: true, delta: '' })
       return

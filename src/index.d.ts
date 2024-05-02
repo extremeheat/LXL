@@ -2,7 +2,7 @@ type CompletionResponse = { content: string, text: string }
 
 declare module 'langxlang' {
   type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
-  type Role = 'system' | 'user' | 'assistant'
+  type Role = 'system' | 'user' | 'assistant' | 'guidance'
   type Message = { role: Role, content: string }
   type ChunkCb = ({ content: string }) => void
 
@@ -39,7 +39,7 @@ declare module 'langxlang' {
       enableCaching?: boolean
     }): Promise<CompletionResponse[]>
     // Request a completion from the model with a sequence of chat messages which have roles.
-    requestChatCompletion(model: Model, options: { messages: Message[], generationOptions: CompletionOptions }, chunkCb: ChunkCb): Promise<CompletionResponse[]>
+    requestChatCompletion(model: Model, options: { messages: Message[], generationOptions?: CompletionOptions }, chunkCb?: ChunkCb): Promise<CompletionResponse[]>
   }
 
   // Note: GoogleAIStudioCompletionService does NOT use the official AI Studio API, but instead uses a relay server to forward requests to an AIStudio client.
