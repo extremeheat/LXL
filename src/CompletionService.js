@@ -41,7 +41,9 @@ class CompletionService {
     }
     if (this.geminiApiKey) {
       const geminiList = await gemini.listModels(this.geminiApiKey)
-      Object.assign(geminiModels, Object.fromEntries(geminiList.map((e) => ([e.name, e]))))
+      Object.assign(geminiModels, Object.fromEntries(geminiList
+        .filter((e) => e.name.startsWith('models/'))
+        .map((e) => ([e.name.replace('models/', ''), e]))))
     }
     return { openai: openaiModels, google: geminiModels }
   }
@@ -107,6 +109,10 @@ class CompletionService {
         const msg = structuredClone(entry)
         if (msg.role === 'model') msg.role = 'assistant'
         if (msg.role === 'guidance') msg.role = 'assistant'
+        if (msg.text != null) {
+          delete msg.text
+          msg.content = entry.text
+        }
         return msg
       }).filter((msg) => msg.content),
       {

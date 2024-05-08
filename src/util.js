@@ -5,15 +5,68 @@ function cleanMessage (msg) {
   return msg.replace(/\r\n/g, '\n')
 }
 
-const knownModelInfo = {
-  'gpt-3.5-turbo-16k': { author: 'openai', family: 'openai', displayName: 'GPT-3.5 Turbo 16k', safeId: 'gpt3_5turbo16k' },
-  'gpt-3.5-turbo': { author: 'openai', family: 'openai', displayName: 'GPT-3.5 Turbo', safeId: 'gpt3_5turbo' },
-  'gpt-4': { author: 'openai', family: 'openai', displayName: 'GPT-4', safeId: 'gpt4' },
-  'gpt-4-turbo-preview': { author: 'openai', family: 'openai', displayName: 'GPT-4 Turbo Preview', safeId: 'gpt4turbo' },
-  'gemini-1.0-pro': { author: 'google', family: 'gemini', displayName: 'Gemini 1.0 Pro', safeId: 'gemini1_0pro' },
-  // Gemini 1.5 Pro has 2 requests per minute
-  'gemini-1.5-pro': { author: 'google', family: 'gemini', displayName: 'Gemini 1.5 Pro', safeId: 'gemini1_5pro', rateLimit: 1000 * 30 }
+function toTitleCase (str) {
+  return str.charAt(0).toUpperCase() + str.slice(1)
 }
+
+const knownModelInfo = {
+  // OpenAI
+  'gpt-3.5-turbo-16k': {
+    author: 'openai',
+    family: 'openai',
+    displayName: 'GPT-3.5 Turbo 16k',
+    safeId: 'gpt3_5turbo16k',
+    contextWindow: 16_000
+  },
+  'gpt-3.5-turbo': {
+    author: 'openai',
+    family: 'openai',
+    displayName: 'GPT-3.5 Turbo',
+    safeId: 'gpt3_5turbo',
+    contextWindow: 16_000
+  },
+  'gpt-4': {
+    author: 'openai',
+    family: 'openai',
+    displayName: 'GPT-4',
+    safeId: 'gpt4',
+    outputTokens: 4096
+  },
+  'gpt-4-32k': {
+    author: 'openai',
+    family: 'openai',
+    displayName: 'GPT-4 32k',
+    safeId: 'gpt4_32k',
+    outputTokens: 32_000
+  },
+  'gpt-4-turbo-preview': {
+    author: 'openai',
+    family: 'openai',
+    displayName: 'GPT-4 Turbo Preview',
+    safeId: 'gpt4turbo',
+    outputTokens: 4096
+  },
+  // Google / Gemini
+  'gemini-1.0-pro': {
+    author: 'google',
+    family: 'gemini',
+    displayName: 'Gemini 1.0 Pro',
+    safeId: 'gemini1_0pro',
+    inputTokens: 30720,
+    outputTokens: 2048
+  },
+  // Gemini 1.5 Pro has 2 requests per minute
+  'gemini-1.5-pro': {
+    author: 'google',
+    family: 'gemini',
+    displayName: 'Gemini 1.5 Pro',
+    safeId: 'gemini1_5pro',
+    rateLimit: 1000 * 30,
+    inputTokens: 1_048_576,
+    outputTokens: 8192
+  }
+}
+
 knownModelInfo['gemini-1.5-pro-latest'] = knownModelInfo['gemini-1.5-pro']
 const knownModels = Object.keys(knownModelInfo)
 
@@ -68,4 +121,4 @@ function checkGuidance (messages, chunkCb) {
   return ''
 }
 
-module.exports = { sleep, cleanMessage, getModelInfo, getRateLimit, checkDoesGoogleModelSupportInstructions, checkGuidance, knownModelInfo, knownModels }
+module.exports = { sleep, cleanMessage, toTitleCase, getModelInfo, getRateLimit, checkDoesGoogleModelSupportInstructions, checkGuidance, knownModelInfo, knownModels }

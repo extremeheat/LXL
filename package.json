@@ -11,6 +11,7 @@
     "test": "npm run mocha",
     "pretest": "npm run lint",
     "mocha": "mocha --bail test/*.test.js",
+    "buildWeb": "browserify src/service/browser.js -o dist/langxlang.js",
     "lint": "standard",
     "fix": "standard --fix"
   },
@@ -34,6 +35,8 @@
   },
   "homepage": "https://github.com/extremeheat/LXL#readme",
   "devDependencies": {
+    "basic-ipc": "^0.1.1",
+    "browserify": "^17.0.0",
     "langxlang": "file:.",
     "mocha": "^10.0.0",
     "standard": "^17.0.0"

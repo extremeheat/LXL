@@ -1,6 +1,7 @@
 node_modules
 package-lock.json
 playground
+dist
 test/*.html
 src/tools/repos
 __*
