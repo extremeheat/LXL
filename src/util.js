@@ -1,4 +1,9 @@
 function cleanMessage (msg) {
+  if (Array.isArray(msg)) {
+    return msg.map(m => {
+      if (m.text) { m.text = cleanMessage(m.text); return m } else return m
+    })
+  }
   if (!msg) return msg
   if (msg.constructor.name === 'PromptString') return msg
   // fix systemMessage \r\n to \n

@@ -3,7 +3,13 @@ type CompletionResponse = { content: string, text: string }
 declare module 'langxlang' {
   type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
   type Role = 'system' | 'user' | 'assistant' | 'guidance'
-  type Message = { role: Role, content: string }
+  type MessagePart = 
+    | { text: string }
+    | { imageURL: string, imageDetail? }
+    | { imageB64: string, mimeType?: string, imageDetail? }
+  type Message = 
+    | { role: Role, content: string }
+    | { role: Role, content: MessagePart }
   type ChunkCb = ({ content: string }) => void
 
   type CompletionOptions = {
@@ -34,7 +40,7 @@ declare module 'langxlang' {
     listModels(): Promise<{ openai: Record<string, object>, google: Record<string, object> }>
 
     // Request a completion from the model with a system prompt and a single user prompt.
-    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?: ChunkCb, options?: CompletionOptions & {
+    requestCompletion(model: Model, systemPrompt: string, userPrompt: string | MessagePart[], _chunkCb?: ChunkCb, options?: CompletionOptions & {
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
     }): Promise<CompletionResponse[]>

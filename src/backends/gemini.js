@@ -89,6 +89,7 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
         // Function response
         resultCandidates.push({
           type: 'function',
+          finishReason: candidate.finishReason,
           fnCalls: candidate.content.functionCalls,
           raw: data,
           safetyRatings: candidate.safetyRatings
@@ -97,6 +98,7 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
         // Text response
         resultCandidates.push({
           type: 'text',
+          finishReason: candidate.finishReason,
           text: () => candidate.content.parts.reduce((acc, part) => acc + part.text, ''),
           raw: data,
           safetyRatings: candidate.safetyRatings
