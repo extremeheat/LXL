@@ -100,7 +100,7 @@ declare module 'langxlang' {
     constructor(completionService: SomeCompletionService, model: Model, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
-    sendMessage(userMessage: string, chunkCallback?: ChunkCb, generationOptions?: CompletionOptions): Promise<string>
+    sendMessage(userMessage: string | MessagePart[], chunkCallback?: ChunkCb, generationOptions?: CompletionOptions): Promise<string>
   }
 
   type StripOptions = {

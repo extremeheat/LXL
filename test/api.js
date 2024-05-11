@@ -191,6 +191,18 @@ async function testImage (model = 'gemini-1.0-pro') {
   console.log('Image result', result)
 }
 
+async function testSessionImage (model) {
+  const session = new ChatSession(completionService, model, '')
+  const q = "What's in this image?"
+  console.log('> ', q)
+  const message = await session.sendMessage([
+    { text: "What's in this image?" },
+    { imageB64: appleIcon64 }
+  ], toTerminal)
+  process.stdout.write('\n')
+  console.log('Done', message)
+}
+
 async function testBasic () {
   completionService.startLogging()
   await testListing()
@@ -209,6 +221,7 @@ async function testBasic () {
   await testImage('gpt-4-turbo')
   await testRemoteImage('gemini-pro-vision')
   await testRemoteImage('gpt-4-turbo')
+  await testSessionImage('gemini-pro-vision')
   const log = completionService.stopLogging()
   const html = log.exportHTML()
   fs.writeFileSync('log.html', html)

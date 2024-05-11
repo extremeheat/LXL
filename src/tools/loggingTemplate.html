@@ -38,8 +38,10 @@
 <script>
   document.getElementById('session-date').innerText = window.$DATE || new Date().toDateString()
   const messages = window.$ENTRIES || [
+    { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date(), messages: [{ role: 'user', contents: [{ text: 'Image test' }, { imageURL: 'https://imgs.xkcd.com/comics/standards.png' }] }] },
     { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date(), messages: [{ role: 'user', contents: 'Hello!' }] },
-    { role: 'model', content: 'This\nworks', model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString() }
+    { role: 'model', content: 'This\nworks', model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString() },
+    { role: 'model', content: [{ text: 'ok' }, { text: '!' }], model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString() }
   ]
   function addMessage({ role, model, on, content, messages, generationOptions = {} }, i) {
     // const html = `
@@ -48,23 +50,80 @@
     //       <strong>Model</strong><br/>
     //       <small>${model}<br/>
     //         ${on}<br/>
-    //         <a href="javascript:void">Copy Response</a>
+    //         <a href="javascript:undefined">Copy Response</a>
     //       </small>
     //     </div>
     //     <div class="contents"><pre id="contents1">${str}</pre></div>
     //   </div>
     // `
+    let contentHTML
+    function contentToHTML(content) {
+      let html = document.createElement('div')
+      if (typeof content === 'string') {
+        const pre = document.createElement('pre')
+        pre.innerText = content
+        html.appendChild(pre)
+      } else if (Array.isArray(content)) {
+        for (const part of content) {
+          if (part.imageURL || part.imageB64) {
+            if (part.imageB64) {
+              if (part.imageB64.startsWith('data:')) {
+                const img = document.createElement('img')
+                img.src = part.imageB64
+                html.appendChild(img)
+                continue
+              } else {
+                const mimeType = part.mimeType
+                const dataUrl = `data:${mimeType};base64,${part.imageB64}`
+                const img = document.createElement('img')
+                img.src = dataUrl
+                html.appendChild(img)
+              }
+            } else {
+              const img = document.createElement('img')
+              img.src = part.imageURL || part.imageB64
+              html.appendChild(img)
+            }
+          } else {
+            const pre = document.createElement('pre')
+            pre.innerText = part.text
+            html.appendChild(pre)
+          }
+        }
+      }
+      return html
+    }
     if (role === 'user' && !content) {
-      content = messages.map((entry) => `<|${entry.role.toUpperCase()}|>\n${entry.content || JSON.stringify(entry.parts)}`).join('\n')
+      contentHTML = document.createElement('div')
+      for (const message of messages) {
+        const messageDiv = document.createElement('div')
+        const roleEl = document.createElement('pre')
+        roleEl.innerText = `<|${message.role.toUpperCase()}|>`
+        messageDiv.appendChild(roleEl)
+        const contentEl = contentToHTML(message.content)
+        messageDiv.appendChild(contentEl)
+        contentHTML.appendChild(messageDiv)
+      }
+    } else {
+      contentHTML = contentToHTML(content)
     }
     function onCopyContent() {
-      navigator.clipboard.writeText(content)
+      if (messages) {
+        const textContent = messages.map(message => typeof message.content === 'string'
+          ? message.content
+          : message.content.map(part => part.text).join('\n')).join('\n')
+        navigator.clipboard.writeText(textContent)
+      } else {
+        const textContent = typeof content === 'string' ? content : content.map(part => part.text).join('\n')
+        navigator.clipboard.writeText(textContent)
+      }
     }
     function onCopyCode() {
       function stringify(content, withPadding = '') {
         return JSON.stringify(content, null, 2).split('\n').map((line, i) => i === 0 ? line : withPadding + line).join('\n')
       }
-      const data = messages ? `
+      const data = messages
+        ? `
 const { CompletionService } = require('langxlang')
 async function main () {
   const service = new CompletionService()
@@ -74,8 +133,8 @@ async function main () {
   })
   console.log(response)
 }
-`.trim() :
-        `
+`.trim()
+        : `
 const { CompletionService } = require('langxlang')
 async function main () {
   const service = new CompletionService()
@@ -93,7 +152,7 @@ async function main () {
     }
     const buttons = role === 'user'
       ? [
-        ['Copy Request JSON', () => navigator.clipboard.writeText(JSON.stringify(messages))],
+        ['Copy Request JSON', () => navigator.clipboard.writeText(JSON.stringify(messages || content))],
         ['Copy Request MD', onCopyContent],
         ['Copy Replay Code', onCopyCode]
       ]
@@ -126,7 +185,7 @@ async function main () {
       for (const [name, action] of buttons) {
         const copy = document.createElement('a')
         copy.onclick = action
-        copy.href = 'javascript:void'
+        copy.href = 'javascript:undefined'
         copy.innerText = name
         small.appendChild(copy)
         small.appendChild(document.createElement('br'))
@@ -137,10 +196,8 @@ async function main () {
     roleEl.appendChild(small)
     const contents = document.createElement('div')
     contents.className = 'contents'
-    const pre = document.createElement('pre')
-    pre.id = 'contents-' + i
-    pre.innerText = content
-    contents.appendChild(pre)
+    contentHTML.id = 'contents-' + i
+    contents.appendChild(contentHTML)
     div.appendChild(roleEl)
     div.appendChild(contents)
     document.getElementById('messages').appendChild(div)
