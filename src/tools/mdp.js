@@ -5,18 +5,15 @@ const { stripMdpComments, normalizeLineEndings } = require('./stripping')
 
 // See doc/MarkdownPreprocessing.md for more information
 
-class PromptString extends String {
+const TOKEN_VAR_START = '%%%('
+const TOKEN_VAR_END = ')%%%'
 
-}
-
-function preMarkdown (text, vars = {}) {
+function tokenizeMarkdown (text, vars = {}) {
   // Notes:
   // %%%()%%% refers to variable insertion
   // %%%[...] if CONDITION%%% refers to conditional insertion
   // %%%[...] if CONDITION else [...]%%% refers to conditional insertion with an else clause
   // %%%IF CONDITION\n...\n%%%ELSE\n...\n%%%ENDIF refers to conditional insertion with an else clause
-  const TOKEN_VAR_START = '%%%('
-  const TOKEN_VAR_END = ')%%%'
   let tokens = []
   let temp = ''
   let result = text
@@ -204,20 +201,93 @@ function preMarkdown (text, vars = {}) {
     }
   }
   tokens.push([temp, 'text'])
+  return tokens
+}
+
+function preMarkdown (text, vars = {}, roles) {
+  const tokens = tokenizeMarkdown(text, vars)
+  const hasRoles = roles && Object.keys(roles).length > 0
   // Now, for each of the var tokens, we replace them with the appropriate value
   for (let i = 0; i < tokens.length; i++) {
     if (tokens[i][1] === 'var') {
       const varName = tokens[i][0].slice(TOKEN_VAR_START.length, -TOKEN_VAR_END.length)
-      const replacement = vars[varName] || ''
-      tokens[i] = [replacement, 'text']
+      if (typeof vars[varName] === 'object') {
+        tokens[i] = [vars[varName], 'part']
+      } else {
+        const replacement = vars[varName] || ''
+        tokens[i] = [replacement, 'text']
+      }
+    } else if (tokens[i][1] === 'text' && hasRoles) {
+      // check if it contains any of the roles, if so split the text into [['', text], ['', role], ['', text]]
+      const newTokens = []
+      const text = tokens[i][0]
+      let k = 0
+      for (let j = 0; j < text.length; j++) {
+        for (const role in roles) {
+          if (text.slice(j, j + role.length) === role) {
+            newTokens.push([text.slice(k, j), 'text'])
+            newTokens.push([role, 'role', roles[role]])
+            k = j + role.length
+          }
+        }
+      }
+      newTokens.push([text.slice(k), 'text'])
+      if (newTokens.length) {
+        // splice the new tokens into the tokens array
+        tokens.splice(i, 1, ...newTokens)
+      }
     }
   }
-  // Now recombine the tokens
-  result = ''
-  for (let i = 0; i < tokens.length; i++) {
-    result += tokens[i][0]
+
+  function splitParts (tokens) {
+    const parts = []
+    // Now recombine the tokens (and segment the tokens into the parts if there are rich variables)
+    let currentPart = ''
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i]
+      if (token[1] === 'part') {
+        parts.push(currentPart)
+        parts.push(token[0])
+        currentPart = ''
+      } else {
+        currentPart += token[0]
+      }
+    }
+    parts.push(currentPart)
+    if (parts.length === 1) {
+      return parts[0]
+    } else {
+      return parts.map(part => typeof part === 'string' ? ({ text: part }) : part)
+    }
   }
-  return result
+
+  if (hasRoles) {
+    const tokensSegmentedByRole = []
+    let currentSegment = [['unknown', 'role']]
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i][1] === 'role') {
+        tokensSegmentedByRole.push(currentSegment)
+        currentSegment = [tokens[i]]
+      } else {
+        currentSegment.push(tokens[i])
+      }
+    }
+    tokensSegmentedByRole.push(currentSegment)
+    // now map each segment to its role
+    const result = []
+    for (let i = 0; i < tokensSegmentedByRole.length; i++) {
+      const segment = tokensSegmentedByRole[i]
+      const role = segment[0][2] || segment[0][0]
+      const content = splitParts(segment.slice(1).map(e => {
+        e[0] = e[0].trim ? e[0].trim() : e[0]
+        return e
+      }))
+      result.push({ role, content })
+    }
+    return result.filter(x => x.content.trim ? (x.content.trim() !== '') : true)
+  }
+
+  return splitParts(tokens)
 }
 
 const DEFAULT_ROLES = {
@@ -265,22 +335,12 @@ function wrapContentWithSufficientTokens (content, token = '`', initialTokenSuff
 }
 
 function loadPrompt (text, vars, options = {}) {
-  const newRoles = {}
+  let newRoles
   if (options.roles) {
-    // Prevent user data from affecting this
-    const roles = options.roles === true ? DEFAULT_ROLES : options.roles
-    for (const role in roles) {
-      const newRole = role + Math.random()
-      newRoles[newRole] = roles[role]
-      text = text.replaceAll(role, newRole)
-    }
+    newRoles = options.roles === true ? DEFAULT_ROLES : options.roles
   }
-  const str = preMarkdown(text.replaceAll('\r\n', '\n'), vars)
-  if (options.roles) {
-    return segmentByRoles(str, newRoles)
-  } else {
-    return new PromptString(str)
-  }
+  const result = preMarkdown(text.replaceAll('\r\n', '\n'), vars, newRoles)
+  return result
 }
 
 function readSync (path, caller) {
