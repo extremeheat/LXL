@@ -8,6 +8,7 @@ window.lxl = {
   tools: {
     stripping,
     tokenizer,
+    loadPrompt: mdp.loadPrompt,
     _segmentPromptByRoles: mdp.segmentByRoles,
     ...misc
   }

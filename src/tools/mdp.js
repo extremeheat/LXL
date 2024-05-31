@@ -211,7 +211,16 @@ function preMarkdown (text, vars = {}, roles) {
   for (let i = 0; i < tokens.length; i++) {
     if (tokens[i][1] === 'var') {
       const varName = tokens[i][0].slice(TOKEN_VAR_START.length, -TOKEN_VAR_END.length)
-      if (typeof vars[varName] === 'object') {
+      if (varName.startsWith('{') && varName.endsWith('}')) {
+        // inline JSON object var
+        const json = varName.slice(1, -1)
+        try {
+          const replacement = JSON.parse(json)
+          tokens[i] = [replacement, 'part']
+        } catch (e) {
+          throw new Error(`Failed to parse JSON object in variable insertion token: ${varName}`)
+        }
+      } else if (typeof vars[varName] === 'object') {
         tokens[i] = [vars[varName], 'part']
       } else {
         const replacement = vars[varName] || ''
@@ -257,7 +266,9 @@ function preMarkdown (text, vars = {}, roles) {
     if (parts.length === 1) {
       return parts[0]
     } else {
-      return parts.map(part => typeof part === 'string' ? ({ text: part }) : part)
+      return parts
+        .map(part => typeof part === 'string' ? ({ text: part }) : part)
+        .filter(x => x.trim ? (x.trim() !== '') : true)
     }
   }
 
