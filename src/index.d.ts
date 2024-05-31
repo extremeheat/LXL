@@ -3,7 +3,13 @@ type CompletionResponse = { content: string, text: string }
 declare module 'langxlang' {
   type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
   type Role = 'system' | 'user' | 'assistant' | 'guidance'
-  type Message = { role: Role, content: string }
+  type MessagePart = 
+    | { text: string }
+    | { imageURL: string, imageDetail? }
+    | { imageB64: string, mimeType?: string, imageDetail? }
+  type Message = 
+    | { role: Role, content: string }
+    | { role: Role, content: MessagePart }
   type ChunkCb = ({ content: string }) => void
 
   type CompletionOptions = {
@@ -33,8 +39,11 @@ declare module 'langxlang' {
 
     listModels(): Promise<{ openai: Record<string, object>, google: Record<string, object> }>
 
+    countTokens(model: Model, text: string | MessagePart[]): Promise<number>
+    countTokensInMessages(model: Model, text: string | MessagePart[]): Promise<number>
+
     // Request a completion from the model with a system prompt and a single user prompt.
-    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, _chunkCb?: ChunkCb, options?: CompletionOptions & {
+    requestCompletion(model: Model, systemPrompt: string, userPrompt: string | MessagePart[], _chunkCb?: ChunkCb, options?: CompletionOptions & {
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
     }): Promise<CompletionResponse[]>
@@ -94,7 +103,7 @@ declare module 'langxlang' {
     constructor(completionService: SomeCompletionService, model: Model, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
-    sendMessage(userMessage: string, chunkCallback?: ChunkCb, generationOptions?: CompletionOptions): Promise<string>
+    sendMessage(userMessage: string | MessagePart[], chunkCallback?: ChunkCb, generationOptions?: CompletionOptions): Promise<string>
   }
 
   type StripOptions = {

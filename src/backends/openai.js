@@ -26,7 +26,12 @@ function createChunkProcessor (chunkCb, resultChoices) {
     }
     for (const choiceId in chunk.choices) {
       const choice = chunk.choices[choiceId]
-      const resultChoice = resultChoices[choiceId] ??= { content: '', fnCalls: [], finishReason: '', safetyRatings: {} }
+      const resultChoice = resultChoices[choiceId] ??= {
+        content: '',
+        fnCalls: [],
+        finishReason: '',
+        safetyRatings: {}
+      }
       if (choice.finish_reason) {
         resultChoice.finishReason = choice.finish_reason
       }

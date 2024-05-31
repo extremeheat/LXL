@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LXL Studio v1</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Noto+Serif:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+    rel="stylesheet">
+</head>
+<style>
+  /* light mode */
+  /* :root {
+    --pageBg: #fff;
+    --panelBg: #f0f0f0;
+    --fg: #000;
+    --chatBg: #f8f8f8;
+    --borders: #ccc;
+  } */
+  /* dark mode */
+  :root {
+    --pageBg: #111;
+    --panelBg: #333;
+    --fg: #fff;
+    --chatBg: #222;
+    --borders: #444;
+
+    --btnSuggest: #825F07;
+    --btnSuggestBorder: #7B5B08;
+    /* --btnSuggest: rgb(136, 115, 0); */
+  }
+
+  body {
+    margin: 0;
+    font-family: "Noto Sans", sans-serif;
+    background-color: var(--pageBg);
+    color: var(--fg);
+  }
+
+  a {
+    color: lightblue;
+    text-decoration: none;
+  }
+
+  button {
+    font-family: "Noto Sans", sans-serif;
+  }
+
+  .container {
+    /* margin-top: 10px; */
+    margin-left: 1vw;
+    margin-right: 1vw;
+  }
+
+  .bar {
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+    margin: 8px;
+
+    >div {
+      display: flex;
+      align-items: center;
+    }
+
+    .buttons {
+      justify-content: flex-end;
+    }
+  }
+
+  .content {
+    display: grid;
+    grid-template-columns: 212px calc(98vw - 212px);
+
+    .panel {
+      color: var(--fg);
+
+      .panel-box {
+        padding-top: 0;
+        padding: 8px;
+        /* padding-right: 10px; */
+        border-radius: 5px;
+        background-color: var(--panelBg);
+        margin-bottom: 1vh;
+
+        .panel-title {
+          font-weight: bold;
+        }
+      }
+
+      .options {
+        padding-top: 5px;
+        padding-bottom: 5px;
+
+        .name {
+          font-weight: bold;
+          color: #E0E0E0;
+          font-family: monospace;
+        }
+
+        .ovalue {
+          /* text-align: center; */
+          margin-left: -4px;
+          display: flex;
+          vertical-align: middle;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .auxinput {
+          width: 66px;
+          margin-left: 2px;
+          border: none;
+          color: var(--fg);
+          text-align: center;
+          border-radius: 5px;
+          vertical-align: middle;
+          background-color: var(--panelBg);
+        }
+
+        .oinput {
+          margin-top: 5px;
+          border: 0.5px solid var(--borders);
+          border-radius: 5px;
+          vertical-align: middle;
+          background-color: blue;
+          accent-color: darkgray;
+        }
+
+        .option {
+          padding-top: 5px;
+          padding-bottom: 5px;
+
+          >div {
+            vertical-align: middle;
+            /* text-align: right; */
+          }
+        }
+
+        .oinput:focus {
+          outline: 1.5px solid blue;
+        }
+      }
+    }
+
+    .conversation {
+      background-color: var(--chatBg);
+      color: var(--fg);
+      border-radius: 5px;
+      padding: 1rem;
+      margin-left: 1%;
+    }
+  }
+
+  progress {
+    /* width: 100%; */
+    /* height: 10px; */
+    /* border-radius: 10px; */
+    /* background-color: #1A1A1A; */
+    accent-color: darkgray;
+  }
+</style>
+
+<style>
+  .message {
+    display: flex;
+    margin-top: 4px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+
+    /* spacing between */
+    .user {
+      margin-right: 5px;
+      margin-top: 6px;
+      width: 80px;
+      max-width: 80px;
+
+      .modelName {
+        font-weight: bold;
+        text-align: center;
+        border-radius: 6px;
+        padding: 6px;
+        background-color: #1A1A1A;
+
+        &:hover {
+          cursor: pointer;
+          background-color: #0A0A0A;
+          transition: 0.5s background-color;
+        }
+      }
+
+      .small {
+        margin-left: -10px;
+        padding-top: 2px;
+        font-size: 0.75rem;
+        color: #888;
+        text-align: right;
+      }
+    }
+
+    .text {
+      margin-left: 5px;
+      margin-top: 8px;
+      padding-bottom: 6px;
+      width: 100%;
+
+      & pre {
+        white-space: pre-wrap;
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+    }
+
+    .edittext {
+      margin-top: -4px;
+      background-color: var(--panelBg);
+      color: var(--fg);
+      width: calc(100% - 1rem);
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid var(--borders);
+    }
+  }
+
+  .messagebar {
+    width: 100%;
+    padding-top: 20px;
+
+    .message-text textarea {
+      background-color: var(--panelBg);
+      color: var(--fg);
+      width: calc(100% - 1rem);
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid var(--borders);
+    }
+
+    .bottomrow {
+      margin-top: 10px;
+
+      .left {
+        display: inline-block;
+
+        >div {
+          display: inline-block;
+          font-size: 0.75rem;
+          vertical-align: middle;
+          text-emphasis: center;
+        }
+      }
+    }
+
+    .right {
+      /* display: inline-block; */
+      float: right;
+    }
+  }
+
+  .textarea {
+    background-color: var(--panelBg);
+    color: var(--fg);
+    width: calc(100% - 1rem);
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid var(--borders);
+  }
+
+  .select {
+    /* margin-top: 10px; */
+    margin-left: 5px;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #1A1A1A;
+    color: var(--fg);
+    border: 1px solid var(--borders);
+
+    &:hover {
+      cursor: pointer;
+      background-color: #0A0A0A;
+      transition: 0.5s background-color;
+    }
+
+    &:disabled {
+      background-color: #505050;
+      color: #808080;
+      border: none;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn {
+    margin-left: 5px;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #1A1A1A;
+    color: var(--fg);
+    border: 1px solid var(--borders);
+
+    &:hover {
+      cursor: pointer;
+      background-color: #0A0A0A;
+      transition: 0.5s background-color;
+    }
+
+    &:disabled {
+      background-color: #505050;
+      color: #808080;
+      border: none;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-suggest {
+    font-weight: bold;
+    background-color: var(--btnSuggest);
+    background-color: gainsboro;
+    color: black;
+    /* border: 1px solid var(--btnSuggestBorder); */
+
+    &:hover {
+      /* background-color: var(--btnSuggestBorder); */
+      background-color: darkgray;
+    }
+  }
+
+  #submission-text {
+    height: 80px;
+  }
+
+  .rendertext {
+
+    & ul,
+    ol,
+    p {
+      margin-top: 0;
+      margin-bottom: 6px;
+    }
+
+    & ul,
+    ol {
+      padding-left: 20px;
+      padding-bottom: 10px;
+    }
+  }
+</style>
+
+<body>
+  <dialog id="loading-modal" open>
+    <style>
+      /* add a backdrop to .container */
+      .container {
+        /* background-color: rgba(0, 0, 0, 0.5); */
+        filter: blur(2px);
+      }
+    </style>
+    <p>Please wait while the connection to the LXL server is established...</p>
+  </dialog>
+</body>
+
+<script>
+  window.debugging = true
+</script>
+<!-- <script src="d:\Development\Projects\Nodejs\node-basic-ipc\dist\basic-ipc.js"></script> -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"
+  integrity="sha512-LhccdVNGe2QMEfI3x4DVV3ckMRe36TfydKss6mJpdHjNFiV07dFpS2xzeZedptKZrwxfICJpez09iNioiSZ3hA=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="C:\Users\extre\Development\Projects\ML\LXL\dist\langxlang.js"></script>
+<script type="module">
+  import { h, render } from 'https://esm.sh/preact';
+  import { useState, useEffect } from 'https://esm.sh/preact/hooks';
+  import htm from 'https://esm.sh/htm';
+  // Initialize htm with Preact
+  const html = htm.bind(h);
+
+  const playground = window.lxl.createSession({
+    serverAddress: 'ws://localhost:8091'
+  })
+  playground.bindForm({
+    generationOptions: {
+      model: 'model'
+    }
+  })
+  let isReady
+  playground.on('ready', () => {
+    document.getElementById('loading-modal').remove()
+    console.log('Models', playground.models)
+    playground.setModelsList(playground.models)
+    playground.updateForModel(playground.models[0].model)
+    playground.messages = []
+    isReady = true
+  })
+  setTimeout(() => {
+    if (!isReady) {
+      // reload the page
+      window.location.reload()
+    }
+  }, 5000)
+  window.playground = playground
+
+  const nextId = () => (Date.now() << 8) | (Math.random() * 0xff)
+  function setMessageContent(id, to) {
+    to = to || ''
+    document.getElementById(id + '-edit').textContent = to
+    document.getElementById(id + '-render').textContent = to
+  }
+  function appendMessageContent(id, to) {
+    to = to || ''
+    document.getElementById(id + '-edit').textContent += to
+    document.getElementById(id + '-render').textContent += to
+  }
+
+  function md2html(text) {
+    const converter = new showdown.Converter()
+    return converter.makeHtml(text)
+  }
+
+  function countTokens(text) {
+    return window.lxl.tools.tokenizer.tokenize('gpt-4', text).length
+  }
+
+  class ChatSession {
+    constructor() {
+      this.messages = []
+    }
+
+    // Update our messages with the messages in DOM's textareas
+    updateMessagesFromDOM(containerId) {
+      const elements = document.querySelectorAll(`#${containerId} .edittext`)
+      elements.forEach((element) => {
+        const messageId = element.id.split('-')[1]
+        const message = this.messages.find(msg => msg.id === messageId)
+        if (message) {
+          message.text.raw = element.value
+          message.text.html = md2html(element.value)
+        }
+      })
+    }
+
+    async sendMessage(msg, model) {
+      // role: { name: 'User' }, text: { html: 'Hello, how are you?', raw: 'Hello, how are you?' }
+      this.messages.push({ role: { id: 'user' }, id: nextId(), text: { html: msg, raw: msg } })
+      const newModelMsg = { role: { id: 'model' }, id: nextId(), pending: true, text: { html: '', raw: '' } }
+
+      const effect = window.lxl.tools.createTypeWriterEffectStream({
+        write(chunk) {
+          appendMessageContent('message-' + newModelMsg.id, chunk)
+        }
+      })
+
+      const request = playground.sendChatCompletionRequest(this.messages.map(msg => {
+        return { role: msg.role.id, content: msg.text.raw }
+      }), { model }, (chunk) => {
+        effect(chunk)
+        newModelMsg.text.raw += (chunk.content || '')
+      })
+      playground.emit('updateError', null)
+      this.messages.push(newModelMsg)
+      playground.emit('conversationUpdate')
+      const response = await request
+      console.log('Complete Response', response)
+      if (response.error) {
+        playground.emit('updateError', response.error)
+      }
+      newModelMsg.pending = false
+      const [result] = response.result
+      newModelMsg.text.raw = result.content
+      playground.emit('conversationUpdate')
+      return response
+    }
+
+    countTokens() {
+      return this.messages.reduce((acc, msg) => acc + countTokens(msg.text.raw), 0)
+    }
+  }
+  const chatSession = new ChatSession()
+  window.chatSession = chatSession
+
+  function Bar() {
+    return html`<div class="bar">
+      <div></div>
+      <div class="title"><strong>LXL Studio</strong></div>
+      <div class="buttons">
+        <button class="btn" stylez="color:gold;font-weight: bold;">Export / Share 📤</button>
+        <button class="btn">Accounts</button>
+      </div>
+    </div>`
+  }
+
+  function PanelOptions() {
+    const options = {
+      temperature: { name: 'Temperature', range: [0, 2], default: 1 },
+      maxOutputTokens: { name: 'Output Tokens', range: [0, 1_000_000], default: 1_000_000 },
+      top_k: { name: 'Top K', range: [0, 100], default: 0 },
+      top_p: { name: 'Top P', range: [0, 1], default: 0 },
+    }
+    const optionsHtml = Object.entries(options).map(([key, opts]) => {
+      return html`<div class="option">
+        <div class="name">${opts.name}</div>
+        <div class="ovalue">
+          <input class="oinput" type="range" min="${opts.range[0]}" max="${opts.range[1]}" value="${opts.default}" />
+          <input class="auxinput" type="text" value="${opts.default}" />
+        </div>
+      </div>`
+    })
+    return html`<div class="panel-box">
+      <div class="panel-title">Options</div>
+      <div class="options">
+        ${optionsHtml}
+      </div>
+    </div>`
+  }
+
+  function Panel() {
+    return html`<div class="panel">
+      <${PanelOptions} />
+    </div>`
+  }
+
+  function pushMessageAndSubmit(userText, model) {
+    if (!model) {
+      return
+    }
+    chatSession.updateMessagesFromDOM()
+    chatSession.sendMessage(userText, typeof model === 'string' ? JSON.parse(model) : model)
+  }
+
+  // Handle tabs
+  function _onKeyDown(event) {
+    // console.log('Key down', event)
+    if (event.key === 'Tab') {
+      event.target.setRangeText('  ', event.target.selectionStart, event.target.selectionEnd, 'end');
+      event.preventDefault();
+    }
+  }
+
+  function ConversationMessage({ message: { id, role, text, pending } }) {
+    function onKeyDown(event) {
+      _onKeyDown(event)
+    }
+    const roleName = { user: 'User', model: 'Model' }[role.id]
+    const rendered = { __html: md2html(text.raw || '') }
+    // console.log('Rendering message', [text.raw, rendered])
+    return html`<div class="message" id="message-${id}">
+      <div class="user">
+        <div class="modelName">${roleName}</div>
+      </div>
+      <div class="text">
+        ${pending
+        ? html`<pre class="rendertext" id="message-${id}-render">${text.raw || ''}</pre>`
+        : html`<div class="rendertext" id="message-${id}-render" dangerouslySetInnerHTML=${rendered}></div>`
+      }
+        <textarea class="edittext" id="message-${id}-edit" style="display:none" onkeydown=${onKeyDown}>${text.raw}</textarea>
+      </div>
+    </div>`
+  }
+
+  function ConversationSubmissionBar({ updateMessages }) {
+    const [activeError, setActiveError] = useState(false)
+    const [tokenCount, setTokenCount] = useState(0)
+    const [aggregateTokenCount, setAggregateTokenCount] = useState(0)
+    const [models, setModels] = useState(playground.models || [])
+    const [activeModel, setActiveModel] = useState('')
+
+    useEffect(() => {
+      playground.on('modelsListUpdate', () => {
+        setModels(playground.models)
+        // set active to gpt-3.5-turbo
+        // const DEFAULT_MODEL = 'gpt-3.5-turbo'
+        const DEFAULT_MODEL = 'gemini-1.0-pro'
+        const model = playground.models.find(model => model.model === DEFAULT_MODEL)
+        console.log('Setting active model', model)
+        const modelValue = JSON.stringify({ service: model.service, model: model.model })
+        document.getElementById('model').value = modelValue
+        setActiveModel(modelValue)
+      })
+      playground.on('conversationUpdate', () => {
+        setAggregateTokenCount(chatSession.countTokens())
+      })
+      playground.on('updateError', (error) => {
+        setActiveError(error)
+      })
+    }, [])
+
+    function onModelChange(event) {
+      const model = event.target.value
+      setActiveModel(model)
+    }
+    function onKeyDown(event) {
+      _onKeyDown(event)
+      // if we get a control + enter, submit the message
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        if (!activeModel) {
+          return
+        }
+        event.preventDefault()
+        const text = event.target.value
+        pushMessageAndSubmit(text, activeModel)
+        event.target.value = ''
+        setTokenCount(0)
+      } else {
+        setTokenCount(countTokens(event.target.value))
+      }
+    }
+    function addMessage(roleId) {
+      const el = document.getElementById('submission-text')
+      const currentText = el.value
+      console.log('Adding message', roleId, currentText)
+      chatSession.messages.push({
+        role: { id: roleId },
+        text: { raw: currentText }
+      })
+      updateMessages()
+      el.value = ''
+      setTokenCount(0)
+    }
+    function onSubmitClick() {
+      const text = document.getElementById('submission-text').value
+      pushMessageAndSubmit(text, activeModel)
+      updateMessages()
+    }
+
+    // - <a href="javascript:void">Show tokens</a>
+    return html`<div class="messagebar">
+      <div class="message-text">
+        <textarea id="submission-text" placeholder="Type a message" onkeydown=${onKeyDown}><mark>Hello world!</mark></textarea>
+      </div>
+      <div class="bottomrow">
+        <div class="left">
+          <button class="btn" onClick=${() => addMessage('user')}>Add User</button>
+          <button class="btn" onClick=${() => addMessage('model')}>Add Model</button>
+          <div style="padding-left:8px;text-align:center;width:fit-content;line-height: 1.5;">
+            <div>GPT-4 Tokens</div>
+            <div>${aggregateTokenCount} ${tokenCount ? html`+ ${tokenCount} pending` : null}</div>
+          </div>
+        </div>
+        <div class="right">
+          <progress value="50" max="100"></progress>
+          <select class="select" name="model" id="model" onChange=${onModelChange} disabled=${models.length === 0} value=${activeModel}>
+            ${models.length === 0 ? html`<option value="" disabled>Please wait...</option>` : null}
+            ${models.map(model => html`<option value=${JSON.stringify({ service: model.service, model: model.model })}>${model.displayName}</option>`)}
+          </select>
+          <button class="btn btn-suggest" onClick=${onSubmitClick} disabled=${!activeModel}>Run</button>
+        </div>
+      </div>
+      <div>
+        ${activeError ? html`<p style="color: red; text-align: center;">${activeError}</p>` : null}
+      </div>
+    </div>`
+  }
+  function ConversationMessages({ messages }) {
+    return html`<div class="messages">
+      ${messages.map(msg => html`<${ConversationMessage} message=${msg} />`)}
+    </div>`
+  }
+  function Conversation() {
+    const testMessages = [
+      { role: { name: 'User' }, text: { html: 'Hello, how are you?', raw: 'Hello, how are you?' } },
+      { role: { name: 'Model' }, text: { html: 'I am fine, thank you.', raw: 'I am fine, thank you.' } },
+    ]
+    const [messages, setMessages] = useState([...chatSession.messages])
+    function updateMessages() {
+      setMessages([...chatSession.messages])
+    }
+    useEffect(() => {
+      playground.on('conversationUpdate', updateMessages)
+    }, [])
+
+    return html`<div class="conversation">
+      <div style="font-weight: bold;">Conversation</div>
+      <${ConversationMessages} updateMessages=${updateMessages} messages=${messages} id="convo-messages" />
+      <${ConversationSubmissionBar} updateMessages=${updateMessages} />
+    </div>`
+  }
+
+  function Content() {
+    return html`<div class="content">
+      <${Panel} />
+      <${Conversation} />
+    </div>`
+  }
+
+  function App() {
+    return html`<div class="container">
+      <${Bar} />
+      <${Content} />
+    </div>`
+  }
+
+  render(html`<${App} />`, document.body);
+</script>
+
+</html>

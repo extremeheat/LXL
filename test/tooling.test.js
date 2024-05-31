@@ -47,6 +47,24 @@ describe('Basic tests', () => {
     console.log('Messages', JSON.stringify(messages))
     assert.strictEqual(JSON.stringify(messages), '[{"role":"system","content":"Respond to the user like a pirate."},{"role":"user","content":"How are you today?"},{"role":"assistant","content":"Arrr, I be doin\' well, matey! How can I help ye today?"},{"role":"user","content":"What is the weather like?"},{"role":"assistant","content":"Arrr, the weather be fair and mild, matey. Ye be safe to set sail!"}]')
   })
+
+  it('mdp rich vars', function () {
+    const prompt = `Hello! What's in this below image?\n%%%(IMAGE)%%%\nPlease tell me what you see.` // eslint-disable-line
+    const parsed = tools.loadPrompt(prompt, {
+      IMAGE: { imageURL: testImage }
+    })
+    assert.strictEqual(JSON.stringify(parsed), JSON.stringify([{ text: "Hello! What's in this below image?\n" }, { imageURL: 'https://www.bing.com/th?id=OHR.CratersOfTheMoon_EN-US6516727783_1920x1080.jpg&w=1000' }, { text: '\nPlease tell me what you see.' }]))
+  })
+
+  it('mdp role processing with rich vars', function () {
+    const prompt = `<|SYSTEM|>\nYou're a helpful AI<|USER|>\nHello! What's in this below image?\n%%%(IMAGE)%%%\nPlease tell me what you see.` // eslint-disable-line
+    const parsed = tools.loadPrompt(prompt, {
+      IMAGE: { imageURL: testImage }
+    }, {
+      roles: true
+    })
+    assert.strictEqual(JSON.stringify(parsed), `[{"role":"system","content":"You're a helpful AI"},{"role":"user","content":[{"text":"Hello! What's in this below image?"},{"imageURL":"https://www.bing.com/th?id=OHR.CratersOfTheMoon_EN-US6516727783_1920x1080.jpg&w=1000"},{"text":"Please tell me what you see."}]}]`) // eslint-disable-line
+  })
 })
 
 describe('stripping', function () {
@@ -76,6 +94,7 @@ public static final EntityType<Boat> BOAT = register(
   })
 })
 
+const testImage = 'https://www.bing.com/th?id=OHR.CratersOfTheMoon_EN-US6516727783_1920x1080.jpg&w=1000'
 const testObject = {
   event_data: [
     {

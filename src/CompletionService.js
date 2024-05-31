@@ -41,7 +41,9 @@ class CompletionService {
     }
     if (this.geminiApiKey) {
       const geminiList = await gemini.listModels(this.geminiApiKey)
-      Object.assign(geminiModels, Object.fromEntries(geminiList.map((e) => ([e.name, e]))))
+      Object.assign(geminiModels, Object.fromEntries(geminiList
+        .filter((e) => e.name.startsWith('models/'))
+        .map((e) => ([e.name.replace('models/', ''), e]))))
     }
     return { openai: openaiModels, google: geminiModels }
   }
@@ -107,6 +109,31 @@ class CompletionService {
         const msg = structuredClone(entry)
         if (msg.role === 'model') msg.role = 'assistant'
         if (msg.role === 'guidance') msg.role = 'assistant'
+        if (msg.text != null) {
+          delete msg.text
+          msg.content = entry.text
+        }
+        if (typeof msg.content === 'object') {
+          const updated = []
+          for (const key in msg.content) {
+            const value = msg.content[key]
+            if (value.text) {
+              updated.push({ type: 'text', text: value.text })
+            } else if (value.imageURL) {
+              updated.push({ type: 'image_url', image_url: { url: value.imageURL, detail: value.imageDetail } })
+            } else if (value.imageB64) {
+              let dataURL = value.imageB64
+              if (!dataURL.startsWith('data:')) {
+                if (!value.mimeType) throw new Error('Missing accompanying `mimeType` for imageB64 that is not a data URL')
+                dataURL = `data:${value.mimeType};base64,${dataURL}`
+              }
+              updated.push({ type: 'image_url', image_url: { url: dataURL, detail: value.imageDetail } })
+            } else if (value.image_url) {
+              updated.push({ type: 'image_url', image_url: value.image_url })
+            }
+          }
+          msg.content = updated
+        }
         return msg
       }).filter((msg) => msg.content),
       {
@@ -130,26 +157,86 @@ class CompletionService {
         tool_calls: 'function'
       }[choice.finishReason] ?? 'unknown'
       const content = guidance ? guidance + choice.content : choice.content
-      return { type: choiceType, isTruncated: choice.finishReason === 'length', ...choice, content, text: content }
+      return {
+        type: choiceType,
+        isTruncated: choice.finishReason === 'length',
+        // ...choice,
+        content,
+        text: content
+      }
     })
   }
 
-  async _requestChatCompleteGemini (model, messages, { maxTokens, stopSequences, temperature, topP, topK }, functions, chunkCb) {
-    if (!this.geminiApiKey) throw new Error('Gemini API key not set')
+  async _processGeminiMessages (model, messages) {
+    // Google Gemini doesn't support data URLs, or even remote ones, so we need to fetch them, extract data URLs then split
+    async function resolveImage (url) {
+      // fetch the URL contents to a data URL (node.js)
+      const req = await fetch(url)
+      const buffer = await req.arrayBuffer()
+      const dataURL = `data:${req.headers.get('content-type')};base64,${Buffer.from(buffer).toString('base64')}`
+      return dataURL
+    }
+
+    function splitDataURL (entry) {
+      // gemini doesn't support data URLs
+      const mimeType = entry.slice(5, entry.indexOf(';'))
+      const data = entry.slice(entry.indexOf(',') + 1)
+      return { inlineData: { mimeType, data } }
+    }
+
     // April 2024 - Only Gemini 1.5 supports instructions
     const supportsSystemInstruction = checkDoesGoogleModelSupportInstructions(model)
-    const guidance = checkGuidance(messages, chunkCb)
+    const imagesForResolve = []
     const geminiMessages = messages.map((msg) => {
       const m = structuredClone(msg)
       if (msg.role === 'assistant') m.role = 'model'
       if (msg.role === 'system') m.role = supportsSystemInstruction ? 'system' : 'user'
       if (msg.role === 'guidance') m.role = 'model'
-      if (msg.content != null) {
+      if (typeof msg.content === 'object') {
+        const updated = []
+        for (const entry of msg.content) {
+          if (entry.text) {
+            updated.push({ text: entry.text })
+          } else if (entry.imageURL) {
+            const val = { imageURL: entry.imageURL }
+            imagesForResolve.push(val)
+            updated.push(val)
+          } else if (entry.imageB64) {
+            if (entry.imageB64.startsWith('data:')) {
+              updated.push(splitDataURL(entry.imageB64))
+            } else if (entry.mimeType) {
+              updated.push({
+                inlineData: {
+                  mimeType: entry.mimeType,
+                  data: entry.imageB64
+                }
+              })
+            }
+          }
+        }
+        delete m.content
+        m.parts = updated
+      } else if (msg.content != null) {
         delete m.content
         m.parts = [{ text: msg.content }]
       }
       return m
     }).filter((msg) => msg.parts && (msg.parts.length > 0))
+
+    for (const entry of imagesForResolve) {
+      const dataURL = await resolveImage(entry.imageURL)
+      Object.assign(entry, splitDataURL(dataURL))
+      delete entry.imageURL
+    }
+
+    return geminiMessages
+  }
+
+  async _requestChatCompleteGemini (model, messages, { maxTokens, stopSequences, temperature, topP, topK }, functions, chunkCb) {
+    if (!this.geminiApiKey) throw new Error('Gemini API key not set')
+    const guidance = checkGuidance(messages, chunkCb)
+    const geminiMessages = await this._processGeminiMessages(model, messages)
+
     const response = await gemini.generateChatCompletionEx(model, geminiMessages, {
       apiKey: this.geminiApiKey,
       functions,
@@ -165,7 +252,13 @@ class CompletionService {
       const answer = response.text()
       chunkCb?.({ done: true, delta: '' })
       const content = guidance ? guidance + answer : answer
-      const result = { type: 'text', content, text: content }
+      const result = {
+        type: 'text',
+        isTruncated: response.finishReason === 'MAX_TOKENS',
+        content,
+        safetyRatings: response.safetyRatings,
+        text: content
+      }
       return [result]
     } else if (response.functionCalls()) {
       const calls = response.functionCalls()
@@ -178,7 +271,7 @@ class CompletionService {
           args: call.args
         }
       }
-      const result = { type: 'function', fnCalls }
+      const result = { type: 'function', fnCalls, safetyRatings: response.safetyRatings }
       return [result]
     } else {
       throw new Error('Unknown response from Gemini')
@@ -211,6 +304,34 @@ class CompletionService {
         return saveIfCaching(await this._requestChatCompleteGemini(model, messages, { ...this.defaultGenerationOptions, ...generationOptions }, functions, chunkCb))
       default:
         throw new Error(`Model '${model}' not supported for streaming chat, available models: ${knownModels.join(', ')}`)
+    }
+  }
+
+  async countTokens (model, content) {
+    const { family } = getModelInfo(model)
+    switch (family) {
+      case 'openai':
+        return require('./tools/tokens').countTokens('gpt-4', content)
+      case 'gemini':
+        return gemini.countTokens(this.geminiApiKey, model, Array.isArray(content)
+          ? (await this._processGeminiMessages(model, [{ role: 'user', content }]))[0].parts
+          : content)
+      default:
+        throw new Error(`Model '${model}' not supported for token counting, available models: ${knownModels.join(', ')}`)
+    }
+  }
+
+  async countTokensInMessages (model, messages) {
+    const { family } = getModelInfo(model)
+    switch (family) {
+      case 'openai':
+        return messages.reduce((cumLen, entry) => {
+          return cumLen + this.countTokens(model, entry.content)
+        }, 0)
+      case 'gemini':
+        return gemini.countTokens(this.geminiApiKey, model, this._processGeminiMessages(model, messages))
+      default:
+        throw new Error(`Model '${model}' not supported for token counting, available models: ${knownModels.join(', ')}`)
     }
   }
 

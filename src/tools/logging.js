@@ -12,7 +12,12 @@ function createHTML (log) {
       on: new Date(entry.date).toISOString(),
       role: 'user',
       model: entry.model,
-      content: entry.messages ? null : [entry.system, entry.user].join('\n'),
+      content: entry.messages
+        ? null
+        : [
+            { text: entry.system || '' },
+            { text: entry.user || '' }
+          ],
       messages: entry.messages,
       generationOptions: entry.generationOptions
     })
