@@ -203,6 +203,27 @@ async function testSessionImage (model) {
   console.log('Done', message)
 }
 
+async function testTokenCounting () {
+  const text = 'Hello, World!'
+  const content = [{ text }]
+  {
+    const tokens = await completionService.countTokens('gpt-3.5-turbo', text)
+    console.log('GPT-3.5/4 Tokens in', text, 'is', tokens)
+    assert.strictEqual(tokens, 4)
+    const tokensGemini = await completionService.countTokens('gemini-1.0-pro', text)
+    console.log('Gemini 1.0 Tokens in', text, 'is', tokensGemini)
+    assert.strictEqual(tokensGemini, 5)
+  }
+  {
+    const tokens = await completionService.countTokens('gpt-3.5-turbo', content)
+    console.log('GPT-3.5/4 Tokens in', text, 'is', tokens)
+    assert.strictEqual(tokens, 4)
+    const tokensGemini = await completionService.countTokens('gemini-1.0-pro', content)
+    console.log('Gemini 1.0 Tokens in', text, 'is', tokensGemini)
+    assert.strictEqual(tokensGemini, 5)
+  }
+}
+
 async function testBasic () {
   completionService.startLogging()
   await testListing()
@@ -222,6 +243,7 @@ async function testBasic () {
   await testRemoteImage('gemini-pro-vision')
   await testRemoteImage('gpt-4-turbo')
   await testSessionImage('gemini-pro-vision')
+  await testTokenCounting()
   const log = completionService.stopLogging()
   const html = log.exportHTML()
   fs.writeFileSync('log.html', html)

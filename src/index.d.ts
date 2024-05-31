@@ -39,6 +39,9 @@ declare module 'langxlang' {
 
     listModels(): Promise<{ openai: Record<string, object>, google: Record<string, object> }>
 
+    countTokens(model: Model, text: string | MessagePart[]): Promise<number>
+    countTokensInMessages(model: Model, text: string | MessagePart[]): Promise<number>
+
     // Request a completion from the model with a system prompt and a single user prompt.
     requestCompletion(model: Model, systemPrompt: string, userPrompt: string | MessagePart[], _chunkCb?: ChunkCb, options?: CompletionOptions & {
       // If true, the response will be cached and returned from the cache if the same request is made again.

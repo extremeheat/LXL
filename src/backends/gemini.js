@@ -133,6 +133,13 @@ async function listModels (apiKey) {
   return response.models
 }
 
+async function countTokens (apiKey, model, content) {
+  const google = new GoogleGenerativeAI(apiKey)
+  const generator = google.getGenerativeModel({ model }, { apiVersion: 'v1beta' })
+  const results = await generator.countTokens(content)
+  return results.totalTokens
+}
+
 function mergeDuplicatedRoleMessages (messages) {
   // if there are 2 messages with the same role, merge them with a newline.
   // Not doing this can return `GoogleGenerativeAIError: [400 Bad Request] Please ensure that multiturn requests ends with a user role or a function response.`
@@ -148,7 +155,7 @@ function mergeDuplicatedRoleMessages (messages) {
   return mergedMessages
 }
 
-module.exports = { generateChatCompletionEx, generateChatCompletionIn, generateCompletion, listModels }
+module.exports = { generateChatCompletionEx, generateChatCompletionIn, generateCompletion, listModels, countTokens }
 
 /*
 {

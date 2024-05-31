@@ -98,7 +98,7 @@ function _sendApiRequest (apiKey, payload, chunkCb) {
       Authorization: 'Bearer ' + apiKey
     }
   }
-  console.debug('[OpenAI] /completions Payload', JSON.stringify(payload))
+  debug('[OpenAI] /completions Payload', JSON.stringify(payload))
   return new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
       if (res.statusCode !== 200) {

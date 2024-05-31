@@ -167,7 +167,7 @@ class CompletionService {
     })
   }
 
-  async _requestChatCompleteGemini (model, messages, { maxTokens, stopSequences, temperature, topP, topK }, functions, chunkCb) {
+  async _processGeminiMessages (model, messages) {
     // Google Gemini doesn't support data URLs, or even remote ones, so we need to fetch them, extract data URLs then split
     async function resolveImage (url) {
       // fetch the URL contents to a data URL (node.js)
@@ -184,10 +184,8 @@ class CompletionService {
       return { inlineData: { mimeType, data } }
     }
 
-    if (!this.geminiApiKey) throw new Error('Gemini API key not set')
     // April 2024 - Only Gemini 1.5 supports instructions
     const supportsSystemInstruction = checkDoesGoogleModelSupportInstructions(model)
-    const guidance = checkGuidance(messages, chunkCb)
     const imagesForResolve = []
     const geminiMessages = messages.map((msg) => {
       const m = structuredClone(msg)
@@ -230,6 +228,14 @@ class CompletionService {
       Object.assign(entry, splitDataURL(dataURL))
       delete entry.imageURL
     }
+
+    return geminiMessages
+  }
+
+  async _requestChatCompleteGemini (model, messages, { maxTokens, stopSequences, temperature, topP, topK }, functions, chunkCb) {
+    if (!this.geminiApiKey) throw new Error('Gemini API key not set')
+    const guidance = checkGuidance(messages, chunkCb)
+    const geminiMessages = await this._processGeminiMessages(model, messages)
 
     const response = await gemini.generateChatCompletionEx(model, geminiMessages, {
       apiKey: this.geminiApiKey,
@@ -298,6 +304,34 @@ class CompletionService {
         return saveIfCaching(await this._requestChatCompleteGemini(model, messages, { ...this.defaultGenerationOptions, ...generationOptions }, functions, chunkCb))
       default:
         throw new Error(`Model '${model}' not supported for streaming chat, available models: ${knownModels.join(', ')}`)
+    }
+  }
+
+  async countTokens (model, content) {
+    const { family } = getModelInfo(model)
+    switch (family) {
+      case 'openai':
+        return require('./tools/tokens').countTokens('gpt-4', content)
+      case 'gemini':
+        return gemini.countTokens(this.geminiApiKey, model, Array.isArray(content)
+          ? (await this._processGeminiMessages(model, [{ role: 'user', content }]))[0].parts
+          : content)
+      default:
+        throw new Error(`Model '${model}' not supported for token counting, available models: ${knownModels.join(', ')}`)
+    }
+  }
+
+  async countTokensInMessages (model, messages) {
+    const { family } = getModelInfo(model)
+    switch (family) {
+      case 'openai':
+        return messages.reduce((cumLen, entry) => {
+          return cumLen + this.countTokens(model, entry.content)
+        }, 0)
+      case 'gemini':
+        return gemini.countTokens(this.geminiApiKey, model, this._processGeminiMessages(model, messages))
+      default:
+        throw new Error(`Model '${model}' not supported for token counting, available models: ${knownModels.join(', ')}`)
     }
   }
 
