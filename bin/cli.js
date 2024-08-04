@@ -4,18 +4,21 @@ const gpt4 = require('gpt-tokenizer/cjs/model/gpt-4')
 const { CompletionService, tools } = require('langxlang')
 
 function countTokens (text) {
-  return gpt4.encode(text).length
+  return gpt4.encode(text.replaceAll('<|endoftext|>', '<|EndOfText|>')).length
 }
 
 function raise (msg) {
   if (msg) console.error(msg)
   console.error('Usage: langxlang <command> ...args')
   console.error('Usage: langxlang count <tokenizer> <file>')
-  console.error('Usage: langxlang githubRepoToMarkdown <repo> <branch or ref> [output file]')
-  console.error('Usage (alias): langxlang repo2md <repo> <branch or ref> [output file]')
+  console.error('Usage: langxlang githubRepoToMarkdown <repo> <branch or ref> [output file] [comma separated extensions]')
+  console.error('Usage: langxlang folderToMarkdown <path> [output file] [comma separated extensions]')
+  console.error('Usage (alias): langxlang repo2md <repo> <branch or ref> [output file] [comma seperated extensions]')
+  console.error('Usage (alias): langxlang folder2md <path> [output file] [comma separated extensions]')
   console.error('Example: langxlang count gpt4 myfile.js')
   console.error('Example: langxlang count gemini1.5pro myfile.txt')
   console.error('Example: langxlang githubRepoToMarkdown PrismarineJS/vec3 master vec3.md')
+  console.error('Example: langxlang folderToMarkdown ./src output.md .js,.ts')
 }
 
 if (process.argv.length < 3) {
@@ -43,9 +46,18 @@ const commands = {
       process.exit(1)
     }
   },
-  githubRepoToMarkdown (repo, branch, outFile = 'repo.md') {
+  githubRepoToMarkdown (repo, branch, outFile = 'repo.md', extensions) {
     const files = tools.collectGithubRepoFiles(repo, {
       branch,
+      extension: extensions ? extensions.split(',') : undefined,
+      truncateLargeFiles: 16_000 // 16k
+    })
+    const md = tools.concatFilesToMarkdown(files)
+    fs.writeFileSync(outFile, md)
+  },
+  folderToMarkdown (path, outFile = 'folder.md', extensions) {
+    const files = tools.collectFolderFiles(path, {
+      extension: extensions ? extensions.split(',') : undefined,
       truncateLargeFiles: 16_000 // 16k
     })
     const md = tools.concatFilesToMarkdown(files)
@@ -54,6 +66,7 @@ const commands = {
 }
 
 commands.repo2md = commands.githubRepoToMarkdown
+commands.folder2md = commands.folderToMarkdown
 
 const [, , command, ...args] = process.argv
 console.error(`command: ${command}`, args)
