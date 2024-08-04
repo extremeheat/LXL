@@ -11,8 +11,8 @@
     "test": "npm run mocha",
     "pretest": "npm run lint",
     "mocha": "mocha --bail test/*.test.js",
-    "buildWeb": "browserify src/service/browser.js -o dist/langxlang.js",
     "lint": "standard",
+    "buildWeb": "browserify src/browser.js -o dist/langxlang.js",
     "fix": "standard --fix"
   },
   "repository": {
@@ -48,6 +48,7 @@
     "debug": "^4.3.4",
     "fast-xml-parser": "^4.3.6",
     "gpt-tokenizer": "^2.1.2",
+    "js-yaml": "^4.1.0",
     "openai": "^4.28.0",
     "ws": "^8.16.0"
   }
