@@ -70,4 +70,10 @@ commands.folder2md = commands.folderToMarkdown
 
 const [, , command, ...args] = process.argv
 console.error(`command: ${command}`, args)
-commands[command](...args)
+const handler = commands[command]
+if (handler) {
+  handler(...args)
+} else {
+  raise('Unknown command')
+  process.exit(1)
+}
