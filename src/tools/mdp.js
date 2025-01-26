@@ -204,6 +204,7 @@ function tokenizeMarkdown (text, vars = {}) {
   return tokens
 }
 
+// TODO: This should not be returning 3 different types of values
 function preMarkdown (text, vars = {}, roles) {
   const tokens = tokenizeMarkdown(text, vars)
   const hasRoles = roles && Object.keys(roles).length > 0
@@ -213,7 +214,7 @@ function preMarkdown (text, vars = {}, roles) {
       const varName = tokens[i][0].slice(TOKEN_VAR_START.length, -TOKEN_VAR_END.length)
       if (varName.startsWith('{') && varName.endsWith('}')) {
         // inline JSON object var
-        const json = varName.slice(1, -1)
+        const json = varName
         try {
           const replacement = JSON.parse(json)
           tokens[i] = [replacement, 'part']

@@ -36,11 +36,11 @@ async function testCodebase () {
 function testMarkdownPreprocessing () {
   const done = preMarkdown(`Your name is %%%(NAME)%%%, and you answer questions for the user%%%[, based on your prompt] if HAS_PROMPT%%%.
   You are running over %%%[the Google AI Studio playground] if IS_AI_STUDIO else [the %%%(LLM_NAME)%%% API]%%%.
-  %%%if IS_AI_STUDIO
+%%%if IS_AI_STUDIO
   You are running in Google AI Studio.
-  %%%else
+%%%else
   You are running via API.
-  %%%endif
+%%%endif
   Done!
   `, {
     NAME: 'Omega',
@@ -50,9 +50,12 @@ function testMarkdownPreprocessing () {
   })
   assert.strictEqual(done, 'Your name is Omega, and you answer questions for the user, based on your prompt.\n' +
   '  You are running over the Gemini 1.5 Pro API.\n' +
-  '  You are running via API.\n' +
+  'You are running via API.\n' +
   '  Done!\n' +
   '  ')
+
+  const testWithEmbed = preMarkdown(`Hello, world! %%%({"text": "Wow!"})%%%`)
+  console.log(testWithEmbed)
 }
 
 async function main () {
