@@ -54,7 +54,7 @@ function testMarkdownPreprocessing () {
   '  Done!\n' +
   '  ')
 
-  const testWithEmbed = preMarkdown(`Hello, world! %%%({"text": "Wow!"})%%%`)
+  const testWithEmbed = preMarkdown('Hello, world! %%%({"text": "Wow!"})%%%')
   console.log(testWithEmbed)
 }
 
