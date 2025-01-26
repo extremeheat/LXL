@@ -35,8 +35,10 @@ function collectFolderFiles (folder, options) {
   // Now figure out the relevant files
   const relevantFiles = []
   for (const [file, relFile] of allFiles) {
-    if (Array.isArray(extension) && !extension.some(ext => file.endsWith(ext))) {
-      continue
+    if (Array.isArray(extension)) {
+      if (!extension.some(ext => file.endsWith(ext))) {
+        continue
+      }
     } else if (extension && !file.endsWith(extension)) {
       continue
     }
@@ -80,8 +82,8 @@ function collectFolderFiles (folder, options) {
     }
     if (options.truncateLargeFiles) {
       const maxTokens = options.truncateLargeFiles
-      if (!gpt4.isWithinTokenLimit(contents, maxTokens)) {
-        contents = gpt4.decode(gpt4.encode(contents).slice(0, maxTokens))
+      if (!gpt4.isWithinTokenLimit(contents.replaceAll('<|endoftext|>', '<|EndOfText|>'), maxTokens)) {
+        contents = gpt4.decode(gpt4.encode(contents.replaceAll('<|endoftext|>', '<|EndOfText|>')).slice(0, maxTokens))
         truncated = true
       }
     }
