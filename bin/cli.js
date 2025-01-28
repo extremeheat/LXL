@@ -38,7 +38,7 @@ const commands = {
       console.log('Tokens:', countTokens(text).toLocaleString())
     } else if (tokenizer === 'gemini1.5pro' || tokenizer === 'g15pro') {
       const service = new CompletionService()
-      service.countTokens('gemini-1.5-pro-latest', text).then((tokens) => {
+      service.countTokens('google', 'gemini-1.5-pro-latest', text).then((tokens) => {
         console.log('Tokens:', tokens.toLocaleString())
       })
     } else {

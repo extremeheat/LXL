@@ -56,7 +56,7 @@ function createChunkProcessor (chunkCb, resultChoices) {
           }
         } else if (delta.content) {
           resultChoice.content += delta.content
-          chunkCb?.(choice.delta, choiceId)
+          chunkCb?.({ n: choiceId, textDelta: delta.content, done: false })
         }
       } else throw new Error('Unknown chunk type')
     }
@@ -144,16 +144,17 @@ function _sendApiRequest (apiKey, payload, chunkCb) {
 }
 
 async function generateChatCompletionIn (model, messages, options, chunkCb) {
+  debug('openai.generateChatCompletionIn', model, options)
   const resultChoices = []
   await _sendApiRequest(options.apiKey, {
     model,
     ...options.generationConfig,
     messages,
     stream: true,
-    tools: options.functions || undefined,
+    tools: options.functions?.map((fn) => ({ type: 'function', function: fn })),
     tool_choice: options.functions ? 'auto' : undefined
   }, createChunkProcessor(chunkCb, resultChoices))
-  debug('[OpenAI] generateChatCompletionIn result', JSON.stringify(resultChoices))
+  debug('openai.generateChatCompletionIn result', JSON.stringify(resultChoices))
   return { choices: safetyCheck(resultChoices) }
 }
 

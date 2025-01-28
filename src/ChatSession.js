@@ -1,17 +1,18 @@
 const { cleanMessage } = require('./util')
 const { convertFunctionsToOpenAI, convertFunctionsToGemini, convertFunctionsToGoogleAIStudio } = require('./functions')
-const { getModelInfo } = require('./util')
 const debug = require('debug')('lxl')
 
 class ChatSession {
-  constructor (completionService, model, systemMessage, options = {}) {
+  constructor (completionService, author, model, systemMessage, options = {}) {
+    if (!['google', 'openai'].includes(author)) throw new Error('ChatSession called with invalid author')
     this.service = completionService
+    this.author = author
     this.model = model
     this.generationOptions = options.generationOptions
     if (options.maxTokens) this.generationOptions.maxTokens = options.maxTokens
     systemMessage = cleanMessage(systemMessage)
     this.messages = []
-    if (systemMessage) this.messages.push({ role: 'system', content: systemMessage })
+    if (systemMessage) this.messages.push({ role: 'system', parts: systemMessage })
     if (options.functions) {
       this.functions = options.functions
       this.loading = this._loadFunctions(options.functions)
@@ -23,21 +24,15 @@ class ChatSession {
   }
 
   async _loadFunctions (functions) {
-    const modelInfo = getModelInfo(this.model)
-    this.modelAuthor = modelInfo.author
-    this.modelFamily = modelInfo.family
-    if (this.service.constructor.name === 'GoogleAIStudioCompletionService') {
-      this.modelAuthor = 'googleaistudio'
-    }
-    if (this.modelAuthor === 'googleaistudio') {
+    if (this.author === 'GoogleAIStudioWeb') {
       const { result, metadata } = await convertFunctionsToGoogleAIStudio(functions)
       this.functionsPayload = result
       this.functionsMeta = metadata
-    } else if (modelInfo.family === 'openai') {
+    } else if (this.author === 'openai') {
       const { result, metadata } = await convertFunctionsToOpenAI(functions)
       this.functionsPayload = result
       this.functionsMeta = metadata
-    } else if (modelInfo.family === 'gemini') {
+    } else if (this.author === 'google') {
       const { result, metadata } = await convertFunctionsToGemini(functions)
       this.functionsPayload = result
       this.functionsMeta = metadata
@@ -71,7 +66,7 @@ class ChatSession {
 
   // This calls a function and adds the reponse to the context so the model can be called again
   async _callFunction (functionName, payload, metadata) {
-    if (this.modelAuthor === 'googleaistudio') {
+    if (this.author === 'GoogleAIStudioWeb') {
       let content = ''
       if (metadata.content) {
         content = metadata.content.trim() + '\n'
@@ -81,45 +76,30 @@ class ChatSession {
       this.messages.push({ role: 'assistant', content })
       const result = await this._callFunctionWithArgs(functionName, payload)
       this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
-    } else if (this.modelFamily === 'openai') {
-      // https://openai.com/blog/function-calling-and-other-api-updates
-      this.messages.push({ role: 'assistant', function_call: { name: functionName, arguments: JSON.stringify(payload) } })
-      const result = await this._callFunctionWithArgs(functionName, payload)
-      this.messages.push({ role: 'function', name: functionName, content: JSON.stringify(result) })
-    } else if (this.modelFamily === 'gemini') {
-      /*
-{
-  "role": "function",
-  "parts": [
+      return
+    }
+    // https://openai.com/blog/function-calling-and-other-api-updates
+    /*
     {
-      "functionResponse": {
-        "name": "find_theaters",
-        "response": {
+      "role": "function",
+      "parts": [{
+        "functionResponse": {
           "name": "find_theaters",
-          "content": {
-            "movie": "Barbie",
-            "theaters": [
-              {
-                "name": "AMC Mountain View 16",
-                "address": "2000 W El Camino Real, Mountain View, CA 94040"
-              },
-              {
-                "name": "Regal Edwards 14",
-                "address": "245 Castro St, Mountain View, CA 94040"
-              }
-            ]
+          "response": {
+            "name": "find_theaters",
+            "content": {
+              "movie": "Barbie",
+              "theaters": [{ "name": "AMC Mountain View 16", "address": "2000 W El Camino Real, Mountain View, CA 94040" }, { "name": "Regal Edwards 14", "address": "245 Castro St, Mountain View, CA 94040" }]
+            }
           }
         }
-      }
+      }]
     }
-  ]
-}
-*/
-
-      this.messages.push({ role: 'model', parts: [{ functionCall: { name: functionName, args: payload } }] })
-      const result = await this._callFunctionWithArgs(functionName, payload)
-      this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: { name: functionName, content: result } } }] })
-    }
+    */
+    this.messages.push({ role: 'assistant', parts: [{ functionCall: { name: functionName, args: payload } }] })
+    const result = await this._callFunctionWithArgs(functionName, payload)
+    this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: result } }] })
+    // this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: { name: functionName, content: result } } }] })
   }
 
   setSystemMessage (systemMessage) {
@@ -128,7 +108,7 @@ class ChatSession {
 
   async _submitRequest (genOptions, chunkCb) {
     debug('Sending to', this.model, this.messages)
-    const [response] = await this.service.requestChatCompletion(this.model, {
+    const [response] = await this.service.requestChatCompletion(this.author, this.model, {
       generationOptions: { ...this.generationOptions, ...genOptions },
       messages: this.messages,
       functions: this.functionsPayload
@@ -147,7 +127,7 @@ class ChatSession {
       }
       return this._submitRequest(genOptions, chunkCb)
     } else if (response.type === 'text') {
-      this.messages.push({ role: 'assistant', content: response.content })
+      this.messages.push({ role: 'assistant', parts: response.parts })
     }
     return response
   }
@@ -164,7 +144,11 @@ class ChatSession {
 
   async sendMessage (message, chunkCb, options) {
     await this.loading
-    this.messages.push({ role: 'user', content: message })
+    if (Array.isArray(message)) {
+      this.messages.push({ role: 'user', parts: message })
+    } else {
+      this.messages.push({ role: 'user', text: message })
+    }
     return this._sendMessages(chunkCb, options)
   }
 }

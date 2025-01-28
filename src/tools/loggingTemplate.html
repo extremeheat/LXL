@@ -38,12 +38,12 @@
 <script>
   document.getElementById('session-date').innerText = window.$DATE || new Date().toDateString()
   const messages = window.$ENTRIES || [
-    { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date(), messages: [{ role: 'user', contents: [{ text: 'Image test' }, { imageURL: 'https://imgs.xkcd.com/comics/standards.png' }] }] },
-    { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date(), messages: [{ role: 'user', contents: 'Hello!' }] },
+    { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date(), messages: [{ role: 'user', parts: [{ text: 'Image test' }, { imageURL: 'https://imgs.xkcd.com/comics/standards.png' }] }] },
+    { role: 'user', model: 'gemini-1.5-pro-latest', on: new Date(), messages: [{ role: 'user', text: 'Hello!' }] },
     { role: 'model', content: 'This\nworks', model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString() },
     { role: 'model', content: [{ text: 'ok' }, { text: '!' }], model: 'gemini-1.5-pro-latest', on: new Date().toLocaleString() }
   ]
-  function addMessage({ role, model, on, content, messages, generationOptions = {} }, i) {
+  function addMessage({ role, author, model, on, content, messages, generationOptions = {} }, i) {
     // const html = `
     //   <div class="message">
     //     <div class="role">
@@ -65,23 +65,23 @@
         html.appendChild(pre)
       } else if (Array.isArray(content)) {
         for (const part of content) {
-          if (part.imageURL || part.imageB64) {
-            if (part.imageB64) {
-              if (part.imageB64.startsWith('data:')) {
+          if (part.imageURL || part.imageB64Url) {
+            if (part.imageB64Url) {
+              if (part.imageB64Url.startsWith('data:')) {
                 const img = document.createElement('img')
-                img.src = part.imageB64
+                img.src = part.imageB64Url
                 html.appendChild(img)
                 continue
               } else {
                 const mimeType = part.mimeType
-                const dataUrl = `data:${mimeType};base64,${part.imageB64}`
+                const dataUrl = `data:${mimeType};base64,${part.imageB64Url}`
                 const img = document.createElement('img')
                 img.src = dataUrl
                 html.appendChild(img)
               }
             } else {
               const img = document.createElement('img')
-              img.src = part.imageURL || part.imageB64
+              img.src = part.imageURL || part.imageB64Url
               html.appendChild(img)
             }
           } else {
@@ -100,7 +100,7 @@
         const roleEl = document.createElement('pre')
         roleEl.innerText = `<|${message.role.toUpperCase()}|>`
         messageDiv.appendChild(roleEl)
-        const contentEl = contentToHTML(message.content)
+        const contentEl = contentToHTML(message.parts || message.content)
         messageDiv.appendChild(contentEl)
         contentHTML.appendChild(messageDiv)
       }
@@ -109,9 +109,9 @@
     }
     function onCopyContent() {
       if (messages) {
-        const textContent = messages.map(message => typeof message.content === 'string'
-          ? message.content
-          : message.content.map(part => part.text).join('\n')).join('\n')
+        const textContent = messages.map(message => typeof message.text
+          ? message.text
+          : message.parts.map(part => part.text).join('\n')).join('\n')
         navigator.clipboard.writeText(textContent)
       } else {
         const textContent = typeof content === 'string' ? content : content.map(part => part.text).join('\n')
@@ -127,7 +127,7 @@
 const { CompletionService } = require('langxlang')
 async function main () {
   const service = new CompletionService()
-  const [response] = await service.requestChatCompletion(${JSON.stringify(model)}, {
+  const [response] = await service.requestChatCompletion(${stringify(author, '    ')}, ${JSON.stringify(model)}, {
     messages: ${stringify(messages, '    ')},
     generationOptions: ${stringify(generationOptions || {}, '    ')}
   })
@@ -139,6 +139,7 @@ const { CompletionService } = require('langxlang')
 async function main () {
   const service = new CompletionService()
   const [response] = await service.requestCompletion(
+    ${stringify(author, '    ')},
     ${stringify(model, '    ')},
     '', /* system */
     ${stringify(content, '    ')}, /* user */

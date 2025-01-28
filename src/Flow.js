@@ -7,7 +7,7 @@ class Flow {
     this.service = service
     this.rootFlow = rootFlow
     this.chunkCb = options.chunkCb
-    this.defaultModel = options.model || 'gemini-1.5-pro'
+    this.defaultModel = { author: 'google', name: options.model || 'gemini-1.5-pro' }
     this.generationOpts = options.generation
   }
 
@@ -37,11 +37,15 @@ class Flow {
     } else {
       if (prompt.system) {
         const system = tools.loadPrompt(prompt.system, usingVars)
-        messages.push({ role: 'system', content: system })
+        const text = Array.isArray(system) ? null : system
+        const parts = Array.isArray(system) ? system : null
+        messages.push({ role: 'system', text, parts })
       }
       if (prompt.user) {
         const user = tools.loadPrompt(prompt.user, usingVars)
-        messages.push({ role: 'user', content: user })
+        const text = Array.isArray(user) ? null : user
+        const parts = Array.isArray(user) ? user : null
+        messages.push({ role: 'user', text, parts })
       }
     }
 
@@ -51,7 +55,7 @@ class Flow {
     if (runFollowUp && runFollowUp.pastResponses[inputHash]) {
       resp = structuredClone(runFollowUp.pastResponses[inputHash])
     } else {
-      const rs = await this.service.requestChatCompletion(model, { messages, generationOptions: this.generationOpts }, this.chunkCb)
+      const rs = await this.service.requestChatCompletion(model.author, model.name, { messages, generationOptions: this.generationOpts }, this.chunkCb)
       resp = rs[0]
     }
     if (!resp) {

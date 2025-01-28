@@ -49,13 +49,13 @@ async function main (port, services) {
     })
 
     client.receive('chatCompletion', (req, resp) => {
-      const { service, model, messages } = req
+      const { service, author, model, messages } = req
       const completionService = services[service || '']
       if (!completionService) {
         resp.sendResponse({ error: `No service for ${service}` })
         return
       }
-      completionService.requestChatCompletion(model, { messages }, (chunk) => {
+      completionService.requestChatCompletion(author, model, { messages }, (chunk) => {
         resp.sendChunk(chunk)
       })
         .then((result) => {

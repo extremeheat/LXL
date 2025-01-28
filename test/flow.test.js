@@ -52,7 +52,7 @@ const chain = (params) => ({
 })
 
 const dummyCompletionService = {
-  requestChatCompletion: async (model, { messages, generationOpts }, chunkCb) => {
+  requestChatCompletion: async (author, model, { messages, generationOpts }, chunkCb) => {
     assert(messages.every(msg => ['user', 'assistant'].includes(msg.role)))
     const mergedPrompt = messages.map(m => m.content).join('\n')
     // console.log('mergedPrompt', [mergedPrompt], messages)
