@@ -93,6 +93,7 @@ class GeminiCompleteService extends BaseCompleteService {
             updated.push({ functionCall: { name: entry.functionCall.name, args: entry.functionCall.args } })
           }
         }
+        m.parts = updated
       } else {
         throw new Error('Message .parts should be an array of part objects')
       }
@@ -124,11 +125,8 @@ class GeminiCompleteService extends BaseCompleteService {
         topK
       }
     }, chunkCb)
-    console.log('Response:')
-    console.dir(response, { depth: null })
     if (response.text()) {
       const answer = response.text()
-      console.log('is a text response', answer, !!response.text())
       chunkCb?.({ done: true, delta: '' })
       const content = guidance ? guidance + answer : answer
       const result = {
@@ -141,7 +139,6 @@ class GeminiCompleteService extends BaseCompleteService {
       return [result]
     } else if (response.functionCalls()) {
       const calls = response.functionCalls()
-      console.log('is a FnCall')
       const fnCalls = {}
       for (let i = 0; i < calls.length; i++) {
         const call = calls[i]
@@ -160,7 +157,6 @@ class GeminiCompleteService extends BaseCompleteService {
       }
       return [result]
     } else {
-      console.log('Text:', response.text(), 'Function calls:', response.functionCalls())
       throw new Error('Unknown response from Gemini')
     }
   }
@@ -200,7 +196,10 @@ class OpenAICompleteService extends BaseCompleteService {
         if (msg.role === 'guidance') msg.role = 'assistant'
         if (msg.role === 'function') {
           const [part] = msg.parts
+          msg.role = 'tool'
           msg.content = part.functionResponse.response
+          if (typeof msg.content !== 'string') msg.content = JSON.stringify(msg.content)
+          msg.tool_call_id = part.functionResponse.id
           delete msg.parts
           return msg
         }
@@ -223,10 +222,12 @@ class OpenAICompleteService extends BaseCompleteService {
               if (!value.mimeType) throw new Error('Missing mimeType for inline data')
               updated.push({ type: 'image_url', image_url: { url: `data:${value.mimeType};base64,${value.data}`, detail: value.imageDetail } })
             } else if (value.functionCall) {
-              msg.function_call = { name: value.functionCall.name, arguments: JSON.stringify(value.functionCall.args) }
+              msg.tool_calls ??= []
+              msg.tool_calls.push({ id: value.functionCall.id, type: 'function', function: { name: value.functionCall.name, arguments: JSON.stringify(value.functionCall.args) } })
             }
           }
           msg.content = updated
+          delete msg.parts
         }
         return msg
       }).filter((msg) => msg.content),

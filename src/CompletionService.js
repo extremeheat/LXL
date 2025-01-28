@@ -81,7 +81,7 @@ class CompletionService {
       return responses
     }
 
-    const ret = await service.requestCompletion(author, model, text, chunkCb, genOpts)
+    const ret = await service.requestCompletion(model, text, genOpts, chunkCb)
     return saveIfCaching(ret)
   }
 

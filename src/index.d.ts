@@ -97,7 +97,8 @@ declare module 'langxlang' {
   }
 
   // The functions that can be used in the user prompt.
-  type Functions<T extends any[]> = Record<string, (...args: T) => void>
+  type ModelFn = (input: any) => any & { description: string, parameters?: Record<string, { type: any, description?: string, required?: boolean }> }
+  type Functions = Record<string, ModelFn>
 
   class ChatSession<T extends any[]> {
     // ChatSession is for back and forth conversation between a user an an LLM.

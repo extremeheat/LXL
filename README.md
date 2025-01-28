@@ -7,10 +7,12 @@ LangXLang (LXL) is a Node.js library and toolkit for using large language models
 
 LXL supports function calling, caching, prompt templating role play, and building complex conversational flows with LLMs.
 
-Supported models are:
-* OpenAI: `gpt-3.5-turbo-16k`, `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo-preview` (or any specific gpt- model listed [here](https://platform.openai.com/docs/models/))
-* Google Gemini: `gemini-1.0-pro` or `gemini-1.5-pro-latest`
-* Google Legacy PaLM2: `text-bison-001`, `text-bison-002`, `palm-2`
+Supports models from OpenAI and those that expose OpenAI-compatible APIs, as well as Google's Gemini models.
+
+Some supported models include:
+* OpenAI: `gpt-4o`, `gpt-4`, `gpt-3.5-turbo`,  (or any specific gpt- model listed [here](https://platform.openai.com/docs/models/))
+* Google Gemini: `gemini-1.5-pro-latest`, `gemini-1.0-pro` 
+<!-- * Google Legacy PaLM2: `text-bison-001`, `text-bison-002`, `palm-2` -->
 
 ## Installation
 ```coffee
@@ -30,6 +32,7 @@ const { ChatSession, CompletionService } = require('langxlang')
 ```js
 const service = new CompletionService({ openai: [key], gemini: [key] })
 const [response] = await service.requestCompletion(
+  'google',                 //  Model author
   'gemini-1.0-pro',         //  Model name
   '',                       //  System prompt (optional)
   'Tell me about yourself'  //  User prompt
@@ -43,7 +46,7 @@ Start a conversation and listen to the response in chunks, streamed to the termi
 
 ```js
 const { ChatSession } = require('langxlang')
-const session = new ChatSession(service, 'gpt-3.5-turbo-16k', /* empty system prompt */ '')
+const session = new ChatSession(service, 'openai', 'gpt-3.5-turbo-16k', /* empty system prompt */ '')
 const q = 'Why is the sky blue?'
 console.log('User:', q)
 await session.sendMessage(q, ({ content }) => { process.stdout.write(content) })
@@ -59,14 +62,15 @@ This is an example to provide a `getTime()` method to the LLM, which can be call
 Note: Each of the functions must have a call to Desc() at the top, to provide a description of the function to the model. If parameters are used, they must be defined with Arg() to provide details to the model, see the example [here](./examples/functions.js) and the TypeScript types [here](./src/index.d.ts) for more details.
 
 ```js
-const { Func: { Arg, Desc } } = require('langxlang')
-const session = new ChatSession(service, 'gpt-3.5-turbo-16k', /* empty system prompt */ '', {
-  functions: {
-    getTime () {
-      Desc('Get the current time')
-      return new Date().toLocaleTimeString()
-    }
-  }
+const { ChatSession } = require('langxlang')
+
+function getTime () {
+  return new Date().toLocaleTimeString()
+}
+getTime.description = 'Get the current time'
+
+const session = new ChatSession(service, 'openai', 'gpt-3.5-turbo-16k', /* empty system prompt */ '', {
+  functions: { getTime }
 })
 session.sendMessage('What time is it?').then(console.log)
 ```
@@ -77,7 +81,7 @@ See a running example in `examples/streaming.js`.
 
 ### CompletionService
 
-#### `constructor(apiKeys: { openai: string, gemini: string })`
+#### `constructor(apiKeys: { openai: string, google: string })`
 
 Creates an instance of completion service.
 Note: as an alternative to explicitly passing the API keys in the constructor you can: 

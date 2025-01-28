@@ -1,5 +1,5 @@
 const { cleanMessage } = require('./util')
-const { convertFunctionsToOpenAI, convertFunctionsToGemini, convertFunctionsToGoogleAIStudio } = require('./functions')
+const { convertFunctionsToGoogleAIStudio } = require('./functions')
 const debug = require('debug')('lxl')
 
 class ChatSession {
@@ -28,44 +28,47 @@ class ChatSession {
       const { result, metadata } = await convertFunctionsToGoogleAIStudio(functions)
       this.functionsPayload = result
       this.functionsMeta = metadata
-    } else if (this.author === 'openai') {
-      const { result, metadata } = await convertFunctionsToOpenAI(functions)
-      this.functionsPayload = result
-      this.functionsMeta = metadata
-    } else if (this.author === 'google') {
-      const { result, metadata } = await convertFunctionsToGemini(functions)
-      this.functionsPayload = result
-      this.functionsMeta = metadata
+      return
     }
+
+    const payload = []
+    for (const fnName in functions) {
+      const fn = functions[fnName]
+      if (!fn.description) throw new Error(`Function '${fnName}' must have a description`)
+      const properties = structuredClone(fn.parameters)
+      for (const argName in properties) {
+        // .required is not a valid JSON Schema property, we use it to populate the required array
+        delete properties[argName].required
+      }
+      payload.push({
+        name: fnName,
+        description: fn.description,
+        parameters: fn.parameters
+          ? {
+              type: 'object',
+              properties,
+              required: Object.keys(fn.parameters).filter(k => fn.parameters[k].required)
+            }
+          : undefined
+      })
+    }
+    this.functionsPayload = payload
+    this.functionsMeta = null
+
     debug('Loaded function payload: ' + JSON.stringify(this.functionsPayload))
     debug('Loaded function metadata: ' + JSON.stringify(this.functionsMeta))
   }
 
   async _callFunctionWithArgs (functionName, payload) {
-    const fnMeta = this.functionsMeta[functionName]
+    console.log('Calling function', functionName, 'with', payload)
     const fn = this.functions[functionName]
-    // payload is an object of { argName: argValue } ... since order is not guaranteed we need to handle it here
-    const args = []
-    for (const param in payload) {
-      const value = payload[param]
-      const index = fnMeta.argNames.indexOf(param)
-      args[index] = value
-    }
-    // Set default values if they're not provided
-    for (let i = 0; i < fnMeta.args.length; i++) {
-      const meta = fnMeta.args[i]
-      if (!args[i]) {
-        if (meta.default) {
-          args[i] = meta.default
-        }
-      }
-    }
-    const result = await fn.apply(null, args.map(e => e))
+    const result = await fn(payload)
     return result
   }
 
   // This calls a function and adds the reponse to the context so the model can be called again
-  async _callFunction (functionName, payload, metadata) {
+  // TODO: Support multiple function calls in a single round
+  async _callFunction (functionName, payload, metadata, id) {
     if (this.author === 'GoogleAIStudioWeb') {
       let content = ''
       if (metadata.content) {
@@ -96,10 +99,9 @@ class ChatSession {
       }]
     }
     */
-    this.messages.push({ role: 'assistant', parts: [{ functionCall: { name: functionName, args: payload } }] })
+    this.messages.push({ role: 'assistant', parts: [{ functionCall: { id, name: functionName, args: payload } }] })
     const result = await this._callFunctionWithArgs(functionName, payload)
-    this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: result } }] })
-    // this.messages.push({ role: 'function', parts: [{ functionResponse: { name: functionName, response: { name: functionName, content: result } } }] })
+    this.messages.push({ role: 'function', parts: [{ functionResponse: { id, name: functionName, response: result } }] })
   }
 
   setSystemMessage (systemMessage) {
@@ -123,7 +125,7 @@ class ChatSession {
       for (const index in response.fnCalls) {
         const call = response.fnCalls[index]
         const args = (typeof call.args === 'string' && call.args.length) ? JSON.parse(call.args) : call.args
-        await this._callFunction(call.name, args ?? {}, response)
+        await this._callFunction(call.name, args ?? {}, response, call.id)
       }
       return this._submitRequest(genOptions, chunkCb)
     } else if (response.type === 'text') {

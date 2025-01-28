@@ -120,8 +120,8 @@ function checkGuidance (messages, chunkCb) {
     if (lastMsg !== guidance[0]) {
       throw new Error('Guidance message must be the last message')
     }
-    chunkCb?.({ done: false, content: guidance[0].content })
-    return guidance[0].content
+    chunkCb?.({ done: false, content: guidance[0].text })
+    return guidance[0].text
   }
   return ''
 }
