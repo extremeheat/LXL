@@ -60,7 +60,6 @@ class ChatSession {
   }
 
   async _callFunctionWithArgs (functionName, payload) {
-    console.log('Calling function', functionName, 'with', payload)
     const fn = this.functions[functionName]
     const result = await fn(payload)
     return result

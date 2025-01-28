@@ -58,18 +58,16 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
           .reduce((acc, part) => acc + part.text, '')
         if (candidate.content.functionCalls?.length) {
           // Function response
-          // TODO: Map the content parts here to LXL's format
           chunkCb?.({
             n: i,
-            parts: candidate.content.parts,
+            parts: convertGeminiPartsToLXLParts(candidate.content.parts),
             textDelta: text,
             done: false,
             raw: candidate
           })
         } else {
           // Text response
-          // TODO: Map the content parts here to LXL's format
-          chunkCb?.({ n: i, textDelta: text, parts: candidate.content.parts, done: false, raw: candidate })
+          chunkCb?.({ n: i, textDelta: text, parts: convertGeminiPartsToLXLParts(candidate.content.parts), done: false, raw: candidate })
         }
       } else if (candidate.finishReason === 'SAFETY') {
         throw new SafetyError(`Gemini completion candidate ${i} was blocked by safety filter: ${JSON.stringify(candidate.safetyRatings)}`)
@@ -93,7 +91,7 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
     _functionCalls: functionCalls,
     text: () => text,
     functionCalls: () => functionCalls,
-    parts: aggParts
+    parts: convertGeminiPartsToLXLParts(aggParts)
   }
 }
 
@@ -195,6 +193,19 @@ function mergeDuplicatedRoleMessages (messages) {
     }
   }
   return mergedMessages
+}
+
+function convertGeminiPartsToLXLParts (parts) {
+  // https://ai.google.dev/api/caching#Part
+  return parts.map(part => {
+    if (part.inlineData) {
+      return {
+        mimeType: part.inlineData.mimeType,
+        data: Buffer.from(part.inlineData.data, 'base64').toString('utf-8')
+      }
+    }
+    return part
+  })
 }
 
 module.exports = { generateChatCompletionEx, generateChatCompletionIn, generateCompletion, listModels, countTokens }

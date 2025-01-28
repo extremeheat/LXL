@@ -20,6 +20,10 @@ class CompletionService {
       openai: new OpenAICompleteService(keys.openai),
       google: new GeminiCompleteService(keys.gemini)
     }
+    if (options.apiBase) {
+      // Override the default API base URL, useful for ollama and other OpenAI-compatible APIs
+      this.servicesByAuthor.openai.apiBase = options.apiBase
+    }
     this.services = Object.values(this.servicesByAuthor)
     this.defaultGenerationOptions = options.generationOptions
   }

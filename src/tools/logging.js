@@ -27,7 +27,7 @@ function createHTML (log) {
       role: 'model',
       author: entry.model,
       model: entry.model,
-      text: entry.responses[0].content || JSON.stringify(entry.responses[0]),
+      text: entry.responses[0].text || JSON.stringify(entry.responses[0]),
       // Don't include unnecessary generation options
       generationOptions: { ...entry.generationOptions, maxTokens: undefined, stopSequences: undefined, enableCaching: undefined }
     })

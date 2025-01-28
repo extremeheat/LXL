@@ -30,7 +30,7 @@ const { ChatSession, CompletionService } = require('langxlang')
 *Note: as described below in API section, the keys can be read via the file system to avoid hardcoding them in the code or environment variables. The risk of API key leakage is reduced by reading from the file system, so it's recommended that you use that approach if you can.*
 
 ```js
-const service = new CompletionService({ openai: [key], gemini: [key] })
+const service = new CompletionService({ openai: KEY, gemini: KEY })
 const [response] = await service.requestCompletion(
   'google',                 //  Model author
   'gemini-1.0-pro',         //  Model name

@@ -68,6 +68,7 @@ async function testGuidance () {
     console.log(result2)
     assert(result2.text.trim().startsWith('```json\n') && result2.text.trim().endsWith('```'), 'Guidance not followed by Gemini 1.0')
   }
+  console.log('Guidance test passed')
 }
 
 function toTerminal (chunk) {

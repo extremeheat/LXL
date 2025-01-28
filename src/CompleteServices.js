@@ -164,7 +164,7 @@ class GeminiCompleteService extends BaseCompleteService {
   async countTokens (model, content) {
     let parts = content
     if (!Array.isArray(content)) {
-      const [a] = await this._processGeminiMessages(model, [{ role: 'user', content }])
+      const [a] = await this._processGeminiMessages(model, [{ role: 'user', text: content }])
       parts = a.parts
     }
     return gemini.countTokens(this.apiKey, model, parts)
@@ -176,8 +176,9 @@ class GeminiCompleteService extends BaseCompleteService {
 }
 
 class OpenAICompleteService extends BaseCompleteService {
-  constructor (apiKey) {
+  constructor (apiKey, apiBase) {
     super(apiKey || process.env.OPENAI_API_KEY)
+    this.apiBase = apiBase || process.env.OPENAI_API_BASE
   }
 
   async requestCompletion (model, text, options, chunkCb) {
@@ -232,6 +233,7 @@ class OpenAICompleteService extends BaseCompleteService {
         return msg
       }).filter((msg) => msg.content),
       {
+        baseURL: this.apiBase,
         apiKey: this.apiKey,
         functions,
         generationConfig: {
@@ -267,7 +269,7 @@ class OpenAICompleteService extends BaseCompleteService {
   }
 
   async listModels () {
-    const list = await openai.listModels(this.apiKey)
+    const list = await openai.listModels(this.apiBase, this.apiKey)
     return Object.fromEntries(list.map((e) => ([e.id, e])))
   }
 
