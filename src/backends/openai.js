@@ -56,7 +56,7 @@ function createChunkProcessor (chunkCb, resultChoices) {
           }
         } else if (delta.content) {
           resultChoice.content += delta.content
-          chunkCb?.(choice.delta, choiceId)
+          chunkCb?.({ n: choiceId, textDelta: delta.content, done: false })
         }
       } else throw new Error('Unknown chunk type')
     }
@@ -65,7 +65,7 @@ function createChunkProcessor (chunkCb, resultChoices) {
 
 // With OpenAI's Node.js SDK
 async function generateChatCompletionEx (model, messages, options, chunkCb) {
-  const openai = new OpenAI(options)
+  const openai = new OpenAI(options) // .baseURL to change API endpoint
   const completion = await openai.chat.completions.create({
     model,
     messages,
@@ -83,12 +83,13 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
 }
 
 // Directly use the OpenAI REST API
-function _sendApiRequest (apiKey, payload, chunkCb) {
+function _sendApiChatComplete (apiBase, apiKey, payload, chunkCb) {
+  const url = new URL(apiBase + '/chat/completions')
   const chunkPrefixLen = 'data: '.length
   const options = {
-    hostname: 'api.openai.com',
+    hostname: url.hostname,
     port: 443,
-    path: '/v1/chat/completions',
+    path: url.pathname,
     method: 'POST',
     headers: {
       Accept: 'text/event-stream',
@@ -97,6 +98,11 @@ function _sendApiRequest (apiKey, payload, chunkCb) {
       Connection: 'keep-alive',
       Authorization: 'Bearer ' + apiKey
     }
+  }
+  if (url.protocol === 'https:') {
+    options.port = 443
+  } else if (url.protocol === 'http:') {
+    options.port = 80
   }
   debug('[OpenAI] /completions Payload', JSON.stringify(payload))
   return new Promise((resolve, reject) => {
@@ -144,16 +150,17 @@ function _sendApiRequest (apiKey, payload, chunkCb) {
 }
 
 async function generateChatCompletionIn (model, messages, options, chunkCb) {
+  debug('openai.generateChatCompletionIn', model, options)
   const resultChoices = []
-  await _sendApiRequest(options.apiKey, {
+  await _sendApiChatComplete(options.baseURL || 'https://api.openai.com/v1', options.apiKey, {
     model,
     ...options.generationConfig,
     messages,
     stream: true,
-    tools: options.functions || undefined,
+    tools: options.functions?.map((fn) => ({ type: 'function', function: fn })),
     tool_choice: options.functions ? 'auto' : undefined
   }, createChunkProcessor(chunkCb, resultChoices))
-  debug('[OpenAI] generateChatCompletionIn result', JSON.stringify(resultChoices))
+  debug('openai.generateChatCompletionIn result', JSON.stringify(resultChoices))
   return { choices: safetyCheck(resultChoices) }
 }
 
@@ -165,8 +172,8 @@ async function generateCompletion (model, system, user, options = {}) {
   return completion
 }
 
-async function listModels (apiKey) {
-  const openai = new OpenAI({ apiKey })
+async function listModels (baseURL, apiKey) {
+  const openai = new OpenAI({ baseURL, apiKey })
   const list = await openai.models.list()
   return list.body.data
 }

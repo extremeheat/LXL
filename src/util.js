@@ -120,10 +120,30 @@ function checkGuidance (messages, chunkCb) {
     if (lastMsg !== guidance[0]) {
       throw new Error('Guidance message must be the last message')
     }
-    chunkCb?.({ done: false, content: guidance[0].content })
-    return guidance[0].content
+    chunkCb?.({ done: false, content: guidance[0].text })
+    return guidance[0].text
   }
   return ''
 }
 
-module.exports = { sleep, cleanMessage, toTitleCase, getModelInfo, getRateLimit, checkDoesGoogleModelSupportInstructions, checkGuidance, knownModelInfo, knownModels }
+function Part (part) {
+  return Object.assign(part, {
+    get imageB64Url () {
+      if (part.imageB64Url) return part.imageB64Url
+      if (part.mimeType && part.data) {
+        const dataB64 = Buffer.from(part.data, 'base64')
+        return `data:${part.mimeType};base64,${dataB64}`
+      }
+    },
+    get mimeType () {
+      if (part.mimeType) return part.mimeType
+      if (part.imageB64Url) return part.imageB64Url.split(';')[0].slice(5)
+    },
+    get data () {
+      if (part.data) return part.data
+      if (part.imageB64Url) return Buffer.from(part.imageB64Url.split(',')[1], 'base64')
+    }
+  })
+}
+
+module.exports = { sleep, cleanMessage, toTitleCase, getModelInfo, getRateLimit, checkDoesGoogleModelSupportInstructions, checkGuidance, knownModelInfo, knownModels, Part }

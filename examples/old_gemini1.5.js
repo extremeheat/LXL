@@ -19,7 +19,7 @@ async function testCompletion () {
 async function testChatSession () {
   const service = new GoogleAIStudioCompletionService(8095)
   await service.ready
-  const session = new ChatSession(service, 'gemini-1.5-pro', '')
+  const session = new ChatSession(service, 'google', 'gemini-1.5-pro', '')
   const message = await session.sendMessage('Hello! Why is the sky blue?')
   console.log('Done', message.length, 'bytes', 'now asking a followup')
   // ask related question about the response

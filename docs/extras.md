@@ -20,7 +20,7 @@ Here is an example:
 ```js
 const { CompletionService } = require('langxlang')
 const service = new CompletionService()
-const [response] = await service.requestChatCompletion('gemini-1.0-pro', {
+const [response] = await service.requestChatCompletion('google', 'gemini-1.0-pro', {
   messages: [
     { role: 'user', message: 'Please convert this YAML to JSON:\n```yml\nhello: world\n```\n' },
     { role: 'guidance', message: '```json\n' }

@@ -569,7 +569,7 @@
         const DEFAULT_MODEL = 'gemini-1.0-pro'
         const model = playground.models.find(model => model.model === DEFAULT_MODEL)
         console.log('Setting active model', model)
-        const modelValue = JSON.stringify({ service: model.service, model: model.model })
+        const modelValue = JSON.stringify({ service: model.service, author: model.author, model: model.model })
         document.getElementById('model').value = modelValue
         setActiveModel(modelValue)
       })

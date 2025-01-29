@@ -11,6 +11,7 @@ function createHTML (log) {
     entries.push({
       on: new Date(entry.date).toISOString(),
       role: 'user',
+      author: entry.author,
       model: entry.model,
       content: entry.messages
         ? null
@@ -24,8 +25,9 @@ function createHTML (log) {
     entries.push({
       on: new Date(entry.date).toISOString(),
       role: 'model',
+      author: entry.model,
       model: entry.model,
-      content: entry.responses[0].content || JSON.stringify(entry.responses[0]),
+      text: entry.responses[0].text || JSON.stringify(entry.responses[0]),
       // Don't include unnecessary generation options
       generationOptions: { ...entry.generationOptions, maxTokens: undefined, stopSequences: undefined, enableCaching: undefined }
     })

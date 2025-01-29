@@ -1,16 +1,18 @@
 type CompletionResponse = { content: string, text: string }
 
 declare module 'langxlang' {
+  type ModelAuthor = 'google' | 'openai'
   type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
   type Role = 'system' | 'user' | 'assistant' | 'guidance'
-  type MessagePart = 
+  type MessagePart =
     | { text: string }
-    | { imageURL: string, imageDetail? }
-    | { imageB64: string, mimeType?: string, imageDetail? }
-  type Message = 
-    | { role: Role, content: string }
-    | { role: Role, content: MessagePart }
-  type ChunkCb = ({ content: string }) => void
+    | { imageURL: string, imageDetail?}
+    | { imageB64Url: string,  imageDetail?}
+    | { data: Buffer, mimeType?: string, imageDetail? }
+  type Message =
+    | { role: Role, text: string }
+    | { role: Role, parts: MessagePart[] }
+  type ChunkCb = ({ n: number, textDelta: string, parts: MessagePart, done: boolean }) => void
 
   type CompletionOptions = {
     maxTokens?: number
@@ -28,7 +30,7 @@ declare module 'langxlang' {
     // `{"keys": {"openai": "your-openai-key", "gemini": "your-gemini-key"}}`
     // In this options object, you can specify generation options that will be applied by default to
     // all requestCompletion calls. You can override these options by passing them in the requestCompletion call.
-    constructor(apiKeys: { openai: string, gemini: string }, options?: { generationOptions: CompletionOptions })
+    constructor(apiKeys: { openai: string, gemini: string }, options?: { apiBase?: string, generationOptions: CompletionOptions })
 
     cachePath: string
 
@@ -37,18 +39,18 @@ declare module 'langxlang' {
     // Stop logging LLM requests, return the HTML of the log
     stopLogging(): { exportHTML: () => string }
 
-    listModels(): Promise<{ openai: Record<string, object>, google: Record<string, object> }>
+    listModels(): Promise<{ [typeof ModelAuthor]: Record<Model, /* platform-specific data */ object> }>
 
-    countTokens(model: Model, text: string | MessagePart[]): Promise<number>
-    countTokensInMessages(model: Model, text: string | MessagePart[]): Promise<number>
+    countTokens(author: ModelAuthor, model: Model, text: string | MessagePart[]): Promise<number>
+    countTokensInMessages(author: ModelAuthor, model: Model, text: string | MessagePart[]): Promise<number>
 
     // Request a completion from the model with a system prompt and a single user prompt.
-    requestCompletion(model: Model, systemPrompt: string, userPrompt: string | MessagePart[], _chunkCb?: ChunkCb, options?: CompletionOptions & {
+    requestCompletion(author: ModelAuthor | string, model: Model | string, parts: string | MessagePart[], _chunkCb?: ChunkCb, options?: CompletionOptions & {
       // If true, the response will be cached and returned from the cache if the same request is made again.
       enableCaching?: boolean
     }): Promise<CompletionResponse[]>
     // Request a completion from the model with a sequence of chat messages which have roles.
-    requestChatCompletion(model: Model, options: { messages: Message[], generationOptions?: CompletionOptions }, chunkCb?: ChunkCb): Promise<CompletionResponse[]>
+    requestChatCompletion(author: ModelAuthor | string, model: Model | string, options: { messages: Message[], generationOptions?: CompletionOptions }, chunkCb?: ChunkCb): Promise<CompletionResponse[]>
   }
 
   // Note: GoogleAIStudioCompletionService does NOT use the official AI Studio API, but instead uses a relay server to forward requests to an AIStudio client.
@@ -95,16 +97,19 @@ declare module 'langxlang' {
   }
 
   // The functions that can be used in the user prompt.
-  type Functions<T extends any[]> = Record<string, (...args: T) => void>
+  type ModelFn = (input: any) => any & { description: string, parameters?: Record<string, { type: any, description?: string, required?: boolean }> }
+  type Functions = Record<string, ModelFn>
 
   class ChatSession<T extends any[]> {
     // ChatSession is for back and forth conversation between a user an an LLM.
-    constructor(completionService: SomeCompletionService, model: Model, systemPrompt?: string)
-    constructor(completionService: SomeCompletionService, model: Model, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
+    constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string)
+    constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
     sendMessage(userMessage: string | MessagePart[], chunkCallback?: ChunkCb, generationOptions?: CompletionOptions): Promise<string>
   }
+
+  // ============ TOOLS ============
 
   type StripOptions = {
     stripEmailQuotes?: boolean,
@@ -217,8 +222,8 @@ declare module 'langxlang' {
 interface FlowChainObjectBase {
   model: Model
   prompt:
-    | { system: string, user: string }
-    | { text: string, roles: Record<string, Role> }
+  | { system: string, user: string }
+  | { text: string, roles: Record<string, Role> }
   with: Record<string, string>
   followUps: Record<string, (resp: CompletionResponse, input: object) => SomeFlowChainObject>
   // The function that transforms the response from the model before it's passed to the followUps/next or returned

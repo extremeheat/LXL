@@ -20,6 +20,7 @@ async function waitForRateLimit (apiKey, model, customRateLimit) {
 }
 
 async function generateChatCompletionEx (model, messages, options, chunkCb) {
+  debug('gemini.generateChatCompletion', JSON.stringify(options))
   await waitForRateLimit(options.apiKey, model, options.rateLimit)
   const google = new GoogleGenerativeAI(options.apiKey)
   const generator = google.getGenerativeModel({ model }, { apiVersion: 'v1beta' })
@@ -41,18 +42,57 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
         }
       : undefined
   }
-  if (options.functions) {
+  if (options.functions) { // { name, description, parameters }[]
     payload.tools.push({ functionDeclarations: options.functions })
   }
-  debug('Sending Gemini payload', JSON.stringify(payload, null, 2))
   const stream = await generator.generateContentStream(payload)
+  const aggParts = []
   for await (const result of stream.stream) {
-    debug('Chunk', result.text())
-    chunkCb?.({ content: result.text(), done: false, raw: result })
+    debug('gemini.Chunk', JSON.stringify(result))
+    let i = 0
+    for (const candidate of result.candidates) {
+      aggParts.push(...candidate.content.parts)
+      if (!candidate.finishReason || candidate.finishReason === 'STOP') {
+        const text = candidate.content.parts
+          .filter(part => part.text !== '')
+          .reduce((acc, part) => acc + part.text, '')
+        if (candidate.content.functionCalls?.length) {
+          // Function response
+          chunkCb?.({
+            n: i,
+            parts: convertGeminiPartsToLXLParts(candidate.content.parts),
+            textDelta: text,
+            done: false,
+            raw: candidate
+          })
+        } else {
+          // Text response
+          chunkCb?.({ n: i, textDelta: text, parts: convertGeminiPartsToLXLParts(candidate.content.parts), done: false, raw: candidate })
+        }
+      } else if (candidate.finishReason === 'SAFETY') {
+        throw new SafetyError(`Gemini completion candidate ${i} was blocked by safety filter: ${JSON.stringify(candidate.safetyRatings)}`)
+      } else {
+        throw new Error(`Gemini completion candidate ${i} failed with reason: ${candidate.finishReason}`)
+      }
+      i++
+    }
   }
+  chunkCb?.({ done: true })
   const response = await stream.response
-  debug('Gemini Response', [response.text(), response.functionCalls()])
-  return response
+  debug('gemini.Response', [response.text(), response.functionCalls()], JSON.stringify(aggParts))
+  // we can't use the Gemini API's .text() or .functionCalls() here, because they don't work with streaming...
+  const text = aggParts.filter(part => part.text).reduce((acc, part) => acc + part.text, '')
+  const functionCalls = aggParts.filter(part => part.functionCall).map(part => ({
+    name: part.functionCall.name,
+    args: part.functionCall.args
+  }))
+  return {
+    _text: text,
+    _functionCalls: functionCalls,
+    text: () => text,
+    functionCalls: () => functionCalls,
+    parts: convertGeminiPartsToLXLParts(aggParts)
+  }
 }
 
 // We now use the Google NPM package, but this method is helpful for understanding/debugging. It doesn't support function calling or streaming.
@@ -153,6 +193,19 @@ function mergeDuplicatedRoleMessages (messages) {
     }
   }
   return mergedMessages
+}
+
+function convertGeminiPartsToLXLParts (parts) {
+  // https://ai.google.dev/api/caching#Part
+  return parts.map(part => {
+    if (part.inlineData) {
+      return {
+        mimeType: part.inlineData.mimeType,
+        data: Buffer.from(part.inlineData.data, 'base64').toString('utf-8')
+      }
+    }
+    return part
+  })
 }
 
 module.exports = { generateChatCompletionEx, generateChatCompletionIn, generateCompletion, listModels, countTokens }
