@@ -71,7 +71,7 @@ declare module 'langxlang' {
     close(): void
 
     // Request a non-streaming completion from the model.
-    requestCompletion(model: Model, systemPrompt: string, userPrompt: string, chunkCb?: ChunkCb, options?: CompletionOptions & {
+    requestCompletion(author: '', model: Model, text: string, chunkCb?: ChunkCb, options?: CompletionOptions & {
       autoFeed?: {
         // Once a line matching stopLine is hit, stop trying to feed the model more input
         stopLine: string,
@@ -83,7 +83,7 @@ declare module 'langxlang' {
     }): Promise<CompletionResponse[]>
 
     // Request a completion from the model with a sequence of chat messages which have roles.
-    requestChatCompletion(model: Model, options: { messages: Message[], generationOptions: CompletionOptions }, chunkCb: ChunkCb): Promise<CompletionResponse[]>
+    requestChatCompletion(author: '', model: Model, options: { messages: Message[], generationOptions: CompletionOptions }, chunkCb: ChunkCb): Promise<CompletionResponse[]>
   }
 
   type SomeCompletionService = CompletionService | GoogleAIStudioCompletionService

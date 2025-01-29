@@ -7,15 +7,15 @@ const service = new CompletionService()
 console.log('Using cache in', service.cachePath)
 
 async function main () {
-  const session = new ChatSession(service, 'openai', 'gpt-3.5-turbo-16k', /* system prompt */ 'Talk like a pirate')
+  const session = new ChatSession(service, 'google', 'gemini-1.5-flash', /* system prompt */ 'Talk like a pirate')
 
   const q = 'Why is the sky blue?'
   console.log('User:', q)
-  await session.sendMessage(q, ({ content }) => { process.stdout.write(content) })
+  await session.sendMessage(q, ({ done, textDelta }) => { process.stdout.write(done ? '\n' : textDelta) })
 
   const q2 = 'What about on the poles?'
   console.log('User:', q2)
-  await session.sendMessage(q2, ({ content }) => { process.stdout.write(content) })
+  await session.sendMessage(q2, ({ done, textDelta }) => { process.stdout.write(done ? '\n' : textDelta) })
 }
 
 main()

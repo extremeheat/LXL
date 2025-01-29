@@ -1,6 +1,17 @@
 const { cleanMessage } = require('./util')
-const { convertFunctionsToGoogleAIStudio } = require('./functions')
 const debug = require('debug')('lxl')
+
+async function convertFunctionsToGoogleAIStudio (functions) {
+  const result = {}
+  for (const name in functions) {
+    const fn = functions[name]
+    result[name] = {
+      description: fn.description,
+      parameters: fn.parameters
+    }
+  }
+  return { result, metadata: null }
+}
 
 class ChatSession {
   constructor (completionService, author, model, systemMessage, options = {}) {
@@ -12,7 +23,7 @@ class ChatSession {
     if (options.maxTokens) this.generationOptions.maxTokens = options.maxTokens
     systemMessage = cleanMessage(systemMessage)
     this.messages = []
-    if (systemMessage) this.messages.push({ role: 'system', parts: systemMessage })
+    if (systemMessage) this.messages.push({ role: 'system', parts: typeof systemMessage === 'string' ? [{ text: systemMessage }] : systemMessage })
     if (options.functions) {
       this.functions = options.functions
       this.loading = this._loadFunctions(options.functions)

@@ -95,7 +95,7 @@ class GeminiCompleteService extends BaseCompleteService {
         }
         m.parts = updated
       } else {
-        throw new Error('Message .parts should be an array of part objects')
+        throw new Error('Message .parts should be an array of part objects: ' + JSON.stringify(msg))
       }
       return m
     }).filter((msg) => msg.parts && (msg.parts.length > 0))

@@ -7,9 +7,7 @@ LangXLang (LXL) is a Node.js library and toolkit for using large language models
 
 LXL supports function calling, caching, prompt templating role play, and building complex conversational flows with LLMs.
 
-Supports models from OpenAI and those that expose OpenAI-compatible APIs, as well as Google's Gemini models.
-
-Some supported models include:
+Supports OpenAI models and Google's Gemini models, as well as any other models that expose an OpenAI-compatible API. Some supported models include:
 * OpenAI: `gpt-4o`, `gpt-4`, `gpt-3.5-turbo`,  (or any specific gpt- model listed [here](https://platform.openai.com/docs/models/))
 * Google Gemini: `gemini-1.5-pro-latest`, `gemini-1.0-pro` 
 <!-- * Google Legacy PaLM2: `text-bison-001`, `text-bison-002`, `palm-2` -->
@@ -31,9 +29,10 @@ const { ChatSession, CompletionService } = require('langxlang')
 
 ```js
 const service = new CompletionService({ openai: KEY, gemini: KEY })
+
 const [response] = await service.requestCompletion(
   'google',                 //  Model author
-  'gemini-1.0-pro',         //  Model name
+  'gemini-1.5-flash',         //  Model name
   '',                       //  System prompt (optional)
   'Tell me about yourself'  //  User prompt
 )
@@ -42,14 +41,17 @@ console.log(response.text) // Hello! I'm Gemini, a large language model created 
 
 #### Chatting with a model
 
-Start a conversation and listen to the response in chunks, streamed to the terminal:
+Start a conversation and listen to the response in chunks, streamed to the terminal with `ChatSession`:
 
 ```js
 const { ChatSession } = require('langxlang')
-const session = new ChatSession(service, 'openai', 'gpt-3.5-turbo-16k', /* empty system prompt */ '')
+
+const session = new ChatSession(service, 'openai', 'gpt-3.5-turbo', /* empty system prompt */ '')
+
 const q = 'Why is the sky blue?'
 console.log('User:', q)
 await session.sendMessage(q, ({ content }) => { process.stdout.write(content) })
+
 const q2 = 'What about on the poles?'
 console.log('User:', q2)
 await session.sendMessage(q2, ({ content }) => { process.stdout.write(content) })
@@ -57,9 +59,15 @@ await session.sendMessage(q2, ({ content }) => { process.stdout.write(content) }
 
 #### Using functions
 
-This is an example to provide a `getTime()` method to the LLM, which can be called from the user's input. The model would call the needed function, get the output, then use that to build the response to the user's message.
+`ChatSession` provides abstractions for function calling as well as storing conversations. Models can call functions to get data to answer or 
+perform actions based on the user's queries.
 
-Note: Each of the functions must have a call to Desc() at the top, to provide a description of the function to the model. If parameters are used, they must be defined with Arg() to provide details to the model, see the example [here](./examples/functions.js) and the TypeScript types [here](./src/index.d.ts) for more details.
+In the example below, we create a ChatSession that is initialized to use the `google` model `gemini-1.5-flash` with an empty system prompt.
+In the final argument to the ChatSession constructor, we pass in an options object that has  `functions` property. This property is an object that maps function names to functions, those that are callable by the model.
+
+Since the model needs additional descriptions about the function, we add a `.description` property to the function which is passed to the model.
+As there are no parameters to the function, we don't need to specify any additional parameter information. When called, getTime() will return
+a string that will be shown to the model so it can use that data to generate a response to the user's question.
 
 ```js
 const { ChatSession } = require('langxlang')
@@ -69,7 +77,7 @@ function getTime () {
 }
 getTime.description = 'Get the current time'
 
-const session = new ChatSession(service, 'openai', 'gpt-3.5-turbo-16k', /* empty system prompt */ '', {
+const session = new ChatSession(service, 'google', 'gemini-1.5-flash', /* empty system prompt */ '', {
   functions: { getTime }
 })
 session.sendMessage('What time is it?').then(console.log)
@@ -89,11 +97,11 @@ Note: as an alternative to explicitly passing the API keys in the constructor yo
 * or, define the keys inside `/.local/share/lxl-cache.json` (linux), `~/Library/Application Support/lxl-cache.json` (mac), or `%appdata%\lxl-cache.json` (windows) with the structure
 `{"keys": {"openai": "your-openai-key", "gemini": "your-gemini-key"}}`
 
-#### `async requestCompletion(model: string, systemPrompt: string, userPrompt: string)`
+#### `async requestCompletion(author: string, model: string, systemPrompt: string, userPrompt: string)`
 
 Request a non-streaming completion from the model.
 
-#### `requestChatCompletion(model: Model, options: { messages: Message[], generationOptions: CompletionOptions }, chunkCb: ChunkCb): Promise<CompletionResponse[]>`
+#### `requestChatCompletion(author: string, model: Model, options: { messages: Message[], generationOptions: CompletionOptions }, chunkCb: ChunkCb): Promise<CompletionResponse[]>`
 
 Request a completion from the model with a sequence of chat messages which have roles. A message should look like
 `{ role: 'user', content: 'Hello!' }` or `{ role: 'system', content: 'Hi!' }`. The `role` can be either `user`, `system` or `assistant`, no
@@ -101,11 +109,11 @@ matter the model in use.
 
 ### ChatSession
 
-#### `constructor(completionService: CompletionService, model: string, systemPrompt: string)`
+#### `constructor(completionService: CompletionService, author: string, model: string, systemPrompt: string)`
 
 ChatSession is for back and forth conversation between a user an an LLM.
 
-#### `async sendMessage (message: string, chunkCallback: ({ content: string }) => void)`
+#### `async sendMessage (message: string, chunkCallback: ({ textDelta: string }) => void)`
 
 Send a message to the LLM and receive a response as return value. The chunkCallback
 can be defined to listen to bits of the message stream as it's being written by the LLM.
