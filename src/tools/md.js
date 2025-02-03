@@ -106,4 +106,18 @@ function parseMarkdown (text, options) {
   }
 }
 
-module.exports = { parseMarkdown }
+function addLineNumbers (text, minWidth = 6) {
+  // add line numbers to the text like: '  1|console.log("Hello, world!")'
+  const lineCount = text.split('\n').length
+  const lineCountWidth = Math.max(lineCount.toString().length, minWidth)
+  return text.split('\n').map((line, i) => {
+    const lineNumber = (i + 1).toString().padStart(lineCountWidth, ' ')
+    return `${lineNumber}|${line}`
+  }).join('\n')
+}
+
+function removeLineNumbers (text) {
+  return text.split('\n').map(line => line.slice(line.indexOf('|') + 1)).join('\n')
+}
+
+module.exports = { parseMarkdown, addLineNumbers, removeLineNumbers }

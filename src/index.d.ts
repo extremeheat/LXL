@@ -182,6 +182,12 @@ declare module 'langxlang' {
     // Takes in a prompt string and splits it by `roles` into an array of messages that are segmented by role.
     // The `roles` arg is a record of sequences to role. Default roles are <|SYSTEM|> (system), <|USER|> (user), and <|ASSISTANT|> (assistant).
     segmentPromptByRoles(prompt: string, roles?: Record<string, string>): { role: Role, content: string }[]
+
+    markdown: {
+      addLineNumbers(input: string, minLineNumWidth): string
+      removeLineNumbers(input: string): string
+    }
+
     // Various string manipulation tools to minify/strip down strings
     stripping: {
       stripMarkdown(input: string, options?: StripOptions): string

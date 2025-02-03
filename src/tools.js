@@ -23,6 +23,7 @@ module.exports = {
   importRawSync: mdp.importPromptRaw,
   importPromptSync: mdp.importPromptSync,
   importPrompt: mdp.importPrompt,
+  markdown: md,
   _segmentPromptByRoles: mdp.segmentByRoles,
   _parseMarkdown: md.parseMarkdown,
   encodeYAML: yaml.encodeYaml,
