@@ -88,7 +88,7 @@ class GoogleAIStudioCompletionService {
       }
     }
     chunkCb?.({ done: true, delta: '\n' })
-    return [saveIfCaching({ type: 'text', text: combinedResult, content: combinedResult })]
+    return [saveIfCaching({ type: 'text', text: combinedResult, parts: combinedResult })]
   }
 
   async requestChatCompletion (author, model, { messages, functions, generationOptions }, chunkCb) {
@@ -103,7 +103,7 @@ class GoogleAIStudioCompletionService {
     chunkCb?.({ done: true, delta: '\n' })
     if (result.type === 'text') {
       const content = guidance ? guidance + result.content : result.content
-      return [{ ...result, content, text: content }]
+      return [{ ...result, parts: content, text: content }]
     }
     return [result]
   }

@@ -1,19 +1,23 @@
-type CompletionResponse = { content: string, text: string }
+type ModelAuthor = 'google' | 'openai'
+type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
+type Role = 'system' | 'user' | 'assistant' | 'guidance'
+type MessagePart =
+  | { text: string }
+  | { imageURL: string, imageDetail?}
+  | { imageB64Url: string,  imageDetail?}
+  | { data: Buffer, mimeType?: string, imageDetail? }
+type Message =
+  | { role: Role, text: string }
+  | { role: Role, parts: MessagePart[] }
+type ChunkCb = ({ n: number, textDelta: string, parts: MessagePart, done: boolean }) => void
+type FnCalls = Record<number, {
+  id: number,
+  name: string,
+  args: Record<string, any>
+}>
+type CompletionResponse = { type: 'text' | 'function', parts: MessagePart[], text?: string, fnCalls?: FnCalls }
 
 declare module 'langxlang' {
-  type ModelAuthor = 'google' | 'openai'
-  type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
-  type Role = 'system' | 'user' | 'assistant' | 'guidance'
-  type MessagePart =
-    | { text: string }
-    | { imageURL: string, imageDetail?}
-    | { imageB64Url: string,  imageDetail?}
-    | { data: Buffer, mimeType?: string, imageDetail? }
-  type Message =
-    | { role: Role, text: string }
-    | { role: Role, parts: MessagePart[] }
-  type ChunkCb = ({ n: number, textDelta: string, parts: MessagePart, done: boolean }) => void
-
   type CompletionOptions = {
     maxTokens?: number
     stopSequences?: string[]
@@ -106,7 +110,11 @@ declare module 'langxlang' {
     constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
-    sendMessage(userMessage: string | MessagePart[], chunkCallback?: ChunkCb, generationOptions?: CompletionOptions): Promise<string>
+    sendMessage(userMessage: string | MessagePart[], chunkCallback?: ChunkCb, generationOptions?: CompletionOptions & { endOnFnCall?: boolean }): Promise<{
+      parts: MessagePart[],
+      text?: string,
+      calledFunctions: FnCalls[]
+    }>
   }
 
   // ============ TOOLS ============
