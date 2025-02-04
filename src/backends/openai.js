@@ -172,13 +172,33 @@ async function generateCompletion (model, system, user, options = {}) {
   return completion
 }
 
+async function transcribeAudioEx (apiBase, apiKey, model, stream, options) {
+  const openai = new OpenAI({ apiKey, baseURL: apiBase })
+  const payload = {
+    model,
+    file: stream instanceof Buffer ? new Blob([stream], { type: 'audio/wav' }) : stream,
+    temperature: options.temperature,
+    response_format: options.responseFormat,
+    timestamp_granularities: options.granularity
+  }
+
+  if (payload.timestamp_granularities === 'word' || payload.timestamp_granularities === 'sentence') {
+    if (!payload.response_format) {
+      payload.response_format = 'verbose_json'
+    }
+  }
+
+  const transcription = await openai.speech.transcription.create(payload)
+  return transcription
+}
+
 async function listModels (baseURL, apiKey) {
   const openai = new OpenAI({ baseURL, apiKey })
   const list = await openai.models.list()
   return list.body.data
 }
 
-module.exports = { generateCompletion, generateChatCompletionEx, generateChatCompletionIn, listModels }
+module.exports = { generateCompletion, generateChatCompletionEx, generateChatCompletionIn, transcribeAudioEx, listModels }
 
 /*
 via https://platform.openai.com/docs/guides/text-generation/chat-completions-api

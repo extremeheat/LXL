@@ -1,3 +1,5 @@
+import { FsReadStream } from "openai/_shims/node-types.mjs"
+
 type ModelAuthor = 'google' | 'openai'
 type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
 type Role = 'system' | 'user' | 'assistant' | 'guidance'
@@ -24,6 +26,12 @@ declare module 'langxlang' {
     temperature?: number
     topP?: number
     topK?: number
+  }
+
+  type TranscriptionOptions = {
+    temperature?: number,
+    // responseFormat?:  | 'text' | 'srt' | 'verbose_json' | 'vtt',
+    granularity?: 'word' | 'sentence',
   }
 
   class CompletionService {
@@ -55,6 +63,22 @@ declare module 'langxlang' {
     }): Promise<CompletionResponse[]>
     // Request a completion from the model with a sequence of chat messages which have roles.
     requestChatCompletion(author: ModelAuthor | string, model: Model | string, options: { messages: Message[], generationOptions?: CompletionOptions }, chunkCb?: ChunkCb): Promise<CompletionResponse[]>
+
+    requestTranscription(author: ModelAuthor | string, model: Model | string, audioStream: FsReadStream | Blob | Buffer, format: 'json', options?: TranscriptionOptions): Promise<{ text: string }>
+    requestTranscription(author: ModelAuthor | string, model: Model | string, audioStream: FsReadStream | Blob | Buffer, format: 'verbose_json', options?: TranscriptionOptions): Promise<{
+      language: string,
+      text: string,
+      segments?: {
+        start: number,
+        end: number,
+        word: string
+      }[],
+      words?: {
+        start: number,
+        end: number,
+        word: string
+      }[]
+    }>
   }
 
   // Note: GoogleAIStudioCompletionService does NOT use the official AI Studio API, but instead uses a relay server to forward requests to an AIStudio client.

@@ -123,6 +123,11 @@ class CompletionService {
     return saveIfCaching(ret)
   }
 
+  async requestTranscription (author, model, audioStream, options = {}) {
+    const service = this._getService(author)
+    return service.requestTranscription(model, audioStream, options)
+  }
+
   async countTokens (author, model, content) {
     const service = this._getService(author)
     return service.countTokens(model, content)

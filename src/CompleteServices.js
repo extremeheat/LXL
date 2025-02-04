@@ -161,6 +161,10 @@ class GeminiCompleteService extends BaseCompleteService {
     }
   }
 
+  async requestTranscription(model, audioStream, options) {
+    throw new Error('Transcription is not supported for Gemini yet - use OpenAI instead')
+  }
+
   async countTokens (model, content) {
     let parts = content
     if (!Array.isArray(content)) {
@@ -266,6 +270,11 @@ class OpenAICompleteService extends BaseCompleteService {
         text: content
       }
     })
+  }
+
+  async requestTranscription(model, audioStream, options) {
+    const res = await openai.transcribeAudioEx(this.apiBase, this.apiKey, model, audioStream, options)
+    return res
   }
 
   async listModels () {
