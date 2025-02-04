@@ -38,7 +38,7 @@
     "basic-ipc": "^0.1.1",
     "browserify": "^17.0.0",
     "langxlang": "file:.",
-    "mocha": "^10.0.0",
+    "mocha": "^11.1.0",
     "standard": "^17.0.0"
   },
   "dependencies": {
