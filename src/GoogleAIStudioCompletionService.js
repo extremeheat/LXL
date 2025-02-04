@@ -35,7 +35,9 @@ class GoogleAIStudioCompletionService {
     this.stop()
   }
 
-  async requestCompletion (model, system, user, chunkCb, options = {}) {
+  async requestCompletion (author, model, text, chunkCb, options = {}) {
+    const system = ''
+    const user = text
     model = modelAliases[model] || model
     if (!supportedModels.includes(model)) {
       throw new Error(`Model ${model} is not supported`)
@@ -43,8 +45,8 @@ class GoogleAIStudioCompletionService {
     if (options.enableCaching) {
       const cachedResponse = await caching.getCachedResponse(model, [system, user])
       if (cachedResponse) {
-        chunkCb?.({ done: false, delta: cachedResponse.text })
-        chunkCb?.({ done: true, delta: '' })
+        chunkCb?.({ done: false, textDelta: cachedResponse.text })
+        chunkCb?.({ done: true, textDelta: '' })
         return [cachedResponse]
       }
     }
@@ -86,19 +88,22 @@ class GoogleAIStudioCompletionService {
       }
     }
     chunkCb?.({ done: true, delta: '\n' })
-    return [saveIfCaching({ type: 'text', text: combinedResult, content: combinedResult })]
+    return [saveIfCaching({ type: 'text', text: combinedResult, parts: combinedResult })]
   }
 
-  async requestChatCompletion (model, { messages, functions, generationOptions }, chunkCb) {
+  async requestChatCompletion (author, model, { messages, functions, generationOptions }, chunkCb) {
     model = modelAliases[model] || model
     if (!supportedModels.includes(model)) throw new Error(`Model ${model} is not supported`)
 
     const guidance = util.checkGuidance(messages, chunkCb)
-    const result = await this._studio.requestChatCompletion(model, messages, chunkCb, { ...generationOptions, functions })
+    const result = await this._studio.requestChatCompletion(model, messages.map((m) => {
+      m.content = m.text || m.parts?.map((p) => p.text).join('\n')
+      return m
+    }), chunkCb, { ...generationOptions, functions })
     chunkCb?.({ done: true, delta: '\n' })
     if (result.type === 'text') {
       const content = guidance ? guidance + result.content : result.content
-      return [{ ...result, content, text: content }]
+      return [{ ...result, parts: content, text: content }]
     }
     return [result]
   }

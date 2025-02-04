@@ -2,6 +2,7 @@ const fs = require('fs')
 const { join, dirname } = require('path')
 const getCaller = require('caller')
 const { stripMdpComments, normalizeLineEndings } = require('./stripping')
+const binaryUtil = require('./binaryUtil')
 
 // See doc/MarkdownPreprocessing.md for more information
 
@@ -217,7 +218,19 @@ function preMarkdown (text, vars = {}, roles) {
         const json = varName
         try {
           const replacement = JSON.parse(json)
-          tokens[i] = [replacement, 'part']
+          if (replacement.var) {
+            let val = vars[replacement.var]
+            if (replacement.as === 'imageB64Url') {
+              val = { imageB64Url: val }
+              tokens[i] = [val, 'part']
+            } else {
+              val = replacement.wrap ? wrapContentWithSufficientTokens(val) : val
+              val = replacement.indent ? val.split('\n').map(l => '    ' + l).join('\n') : val
+              tokens[i] = [val, 'text']
+            }
+          } else {
+            tokens[i] = [replacement, 'part']
+          }
         } catch (e) {
           throw new Error(`Failed to parse JSON object in variable insertion token: ${varName}`)
         }
@@ -268,7 +281,15 @@ function preMarkdown (text, vars = {}, roles) {
       return parts[0]
     } else {
       return parts
-        .map(part => typeof part === 'string' ? ({ text: part }) : part)
+        .map(part => {
+          if (typeof part === 'string') return { text: part }
+          if (Buffer.isBuffer(part)) {
+            const mimeType = binaryUtil.getMimeType(part)
+            return { data: part.toString('base64'), mimeType }
+          } else {
+            return part
+          }
+        })
         .filter(x => x.trim ? (x.trim() !== '') : true)
     }
   }

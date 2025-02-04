@@ -31,6 +31,11 @@ function extractCodeblockFromMarkdown (md) {
         lang: token[2],
         code: token[3]
       })
+    } else if (token[1] === 'preformat') {
+      acc.push({
+        raw: token[0],
+        code: token[2]
+      })
     }
     return acc
   }, [])

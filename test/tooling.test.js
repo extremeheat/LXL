@@ -1,4 +1,5 @@
 /* eslint-env mocha */
+const fs = require('fs')
 const { tools } = require('langxlang')
 const assert = require('assert')
 const yaml = require('js-yaml')
@@ -35,6 +36,30 @@ describe('Basic tests', () => {
     const json = JSON.stringify(parsed)
     // console.log('Parsed', json)
     assert.strictEqual(json, expectedMd)
+  })
+
+  it('md line numbering', function () {
+    {
+      const text = '\nconsole.log("Hello, world!")\n'
+      console.log('Text', [text])
+      const numbered = tools.markdown.addLineNumbers(text)
+      console.log('Numbered', [numbered])
+      // console.log(numbered)
+
+      const expected = '     1|\n     2|console.log("Hello, world!")\n     3|'
+      assert.strictEqual(numbered, expected)
+
+      const removed = tools.markdown.removeLineNumbers(numbered)
+      console.log('Removed', [removed])
+      assert.strictEqual(removed, text)
+    }
+
+    {
+      const thisFile = fs.readFileSync(__filename, 'utf-8')
+      tools.markdown.addLineNumbers(thisFile)
+      // console.log('This file numbered:')
+      // console.log(thisFileNumbered)
+    }
   })
 
   it('mdp role processing', function () {

@@ -1,6 +1,17 @@
 const { cleanMessage } = require('./util')
-const { convertFunctionsToGoogleAIStudio } = require('./functions')
 const debug = require('debug')('lxl')
+
+async function convertFunctionsToGoogleAIStudio (functions) {
+  const result = {}
+  for (const name in functions) {
+    const fn = functions[name]
+    result[name] = {
+      description: fn.description,
+      parameters: fn.parameters
+    }
+  }
+  return { result, metadata: null }
+}
 
 class ChatSession {
   constructor (completionService, author, model, systemMessage, options = {}) {
@@ -12,7 +23,7 @@ class ChatSession {
     if (options.maxTokens) this.generationOptions.maxTokens = options.maxTokens
     systemMessage = cleanMessage(systemMessage)
     this.messages = []
-    if (systemMessage) this.messages.push({ role: 'system', parts: systemMessage })
+    if (systemMessage) this.messages.push({ role: 'system', parts: typeof systemMessage === 'string' ? [{ text: systemMessage }] : systemMessage })
     if (options.functions) {
       this.functions = options.functions
       this.loading = this._loadFunctions(options.functions)
@@ -104,7 +115,8 @@ class ChatSession {
   }
 
   setSystemMessage (systemMessage) {
-    this.messages[0].content = systemMessage
+    if (typeof systemMessage === 'string') systemMessage = [{ text: systemMessage }]
+    this.messages[0].parts = systemMessage
   }
 
   async _submitRequest (genOptions, chunkCb) {
@@ -115,7 +127,9 @@ class ChatSession {
       functions: this.functionsPayload
     }, chunkCb)
     debug('Streaming response', JSON.stringify(response))
-    if (response.type === 'function') {
+    if (response.type === 'function' && genOptions.endOnFnCall) {
+      this._calledFunctionsForRound.push(response.fnCalls)
+    } else if (response.type === 'function') {
       this._calledFunctionsForRound.push(response.fnCalls)
       if (Array.isArray(response.fnCalls) && !response.fnCalls.length) {
         throw new Error('No function calls returned, but type is function')
@@ -140,7 +154,7 @@ class ChatSession {
     if (guidanceIx !== -1) {
       this.messages.splice(guidanceIx, 1)
     }
-    return { content: response.content, text: response.content, calledFunctions: this._calledFunctionsForRound }
+    return { parts: response.parts, text: response.text, calledFunctions: this._calledFunctionsForRound }
   }
 
   async sendMessage (message, chunkCb, options) {
