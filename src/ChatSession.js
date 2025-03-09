@@ -158,6 +158,10 @@ class ChatSession {
     if (guidanceIx !== -1) {
       this.messages.splice(guidanceIx, 1)
     }
+    const calledFunctions = []
+    for (const round of this._calledFunctionsForRound) {
+      calledFunctions.push(...Object.values(round))
+    }
     return { parts: response.parts, text: response.text, calledFunctions: this._calledFunctionsForRound }
   }
 

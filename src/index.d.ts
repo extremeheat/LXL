@@ -1,23 +1,20 @@
-import { FsReadStream } from "openai/_shims/node-types.mjs"
-
-type ModelAuthor = 'google' | 'openai'
-type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
-type Role = 'system' | 'user' | 'assistant' | 'guidance'
-type MessagePart =
+export type ModelAuthor = 'google' | 'openai'
+export type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
+export type Role = 'system' | 'user' | 'assistant' | 'guidance'
+export type MessagePart =
   | { text: string }
   | { imageURL: string, imageDetail?}
   | { imageB64Url: string,  imageDetail?}
   | { data: Buffer, mimeType?: string, imageDetail? }
-type Message =
+export type Message =
   | { role: Role, text: string }
   | { role: Role, parts: MessagePart[] }
-type ChunkCb = ({ n: number, textDelta: string, parts: MessagePart, done: boolean }) => void
-type FnCalls = Record<number, {
-  id: number,
-  name: string,
-  args: Record<string, any>
-}>
-type CompletionResponse = { type: 'text' | 'function', parts: MessagePart[], text?: string, fnCalls?: FnCalls }
+export type ChunkCb = ({ n: number, textDelta: string, parts: MessagePart, done: boolean }) => void
+
+export type FnCall = { id?: number, name: string, args: Record<string, any> }
+// TODO: Turn FnCalls from Record<number, FnCall> to FnCall[] (breaking)
+export type FnCalls = Record<number, FnCall>
+export type CompletionResponse = { type: 'text' | 'function', parts: MessagePart[], text?: string, fnCalls?: FnCalls }
 
 declare module 'langxlang' {
   type CompletionOptions = {
@@ -141,7 +138,7 @@ declare module 'langxlang' {
       author: ModelAuthor | string,
       model: Model | string,
       systemPrompt?: string,
-      options: { generationOptions: CompletionOptions, functions?: Functions }
+      options?: { generationOptions: CompletionOptions, functions?: Functions }
     )
     // constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
@@ -158,7 +155,7 @@ declare module 'langxlang' {
       messages: Message[],
       chunkCallback?: ChunkCb,
       generationOptions?: CompletionOptions & { endOnFnCall?: boolean }
-    ): Promise<{ parts: MessagePart[], text?: string, calledFunctions: FnCalls[] }>
+    ): Promise<{ parts: MessagePart[], text?: string, calledFunctions: FnCall[] }>
   }
 
   // ============ TOOLS ============
