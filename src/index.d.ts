@@ -30,7 +30,7 @@ declare module 'langxlang' {
 
   type TranscriptionOptions = {
     temperature?: number,
-    // responseFormat?:  | 'text' | 'srt' | 'verbose_json' | 'vtt',
+    responseFormat?: 'json' | 'text' | 'srt' | 'verbose_json' | 'vtt',
     granularity?: 'word' | 'sentence',
   }
 
@@ -42,7 +42,7 @@ declare module 'langxlang' {
     // `{"keys": {"openai": "your-openai-key", "gemini": "your-gemini-key"}}`
     // In this options object, you can specify generation options that will be applied by default to
     // all requestCompletion calls. You can override these options by passing them in the requestCompletion call.
-    constructor(apiKeys: { openai: string, gemini: string }, options?: { apiBase?: string, generationOptions: CompletionOptions })
+    constructor(apiKeys: Record<ModelAuthor, string>, options?: { apiBase?: string, generationOptions: CompletionOptions })
 
     cachePath: string
 
@@ -51,7 +51,7 @@ declare module 'langxlang' {
     // Stop logging LLM requests, return the HTML of the log
     stopLogging(): { exportHTML: () => string }
 
-    listModels(): Promise<{ [typeof ModelAuthor]: Record<Model, /* platform-specific data */ object> }>
+    listModels(): Promise<Record<ModelAuthor, /* platform-specific data */ object>>
 
     countTokens(author: ModelAuthor, model: Model, text: string | MessagePart[]): Promise<number>
     countTokensInMessages(author: ModelAuthor, model: Model, text: string | MessagePart[]): Promise<number>
@@ -79,6 +79,12 @@ declare module 'langxlang' {
         word: string
       }[]
     }>
+    requestSpeechSynthesis (author: ModelAuthor | string, model: Model | string, text: string, options?: {
+      voice?: string,
+      speed?: number,
+      pitch?: number,
+      volume?: number
+    }): Promise<Response>
   }
 
   // Note: GoogleAIStudioCompletionService does NOT use the official AI Studio API, but instead uses a relay server to forward requests to an AIStudio client.
@@ -128,10 +134,16 @@ declare module 'langxlang' {
   type ModelFn = (input: any) => any & { description: string, parameters?: Record<string, { type: any, description?: string, required?: boolean }> }
   type Functions = Record<string, ModelFn>
 
-  class ChatSession<T extends any[]> {
+  class ChatSession/*<T extends any[]>*/ {
     // ChatSession is for back and forth conversation between a user an an LLM.
-    constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string)
-    constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
+    constructor(
+      completionService: SomeCompletionService,
+      author: ModelAuthor | string,
+      model: Model | string,
+      systemPrompt?: string,
+      options: { generationOptions: CompletionOptions, functions?: Functions }
+    )
+    // constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
     sendMessage(userMessage: string | MessagePart[], chunkCallback?: ChunkCb, generationOptions?: CompletionOptions & { endOnFnCall?: boolean }): Promise<{
@@ -139,6 +151,14 @@ declare module 'langxlang' {
       text?: string,
       calledFunctions: FnCalls[]
     }>
+
+    setFunctions(functions: Functions): void
+
+    setAndSendMessages(
+      messages: Message[],
+      chunkCallback?: ChunkCb,
+      generationOptions?: CompletionOptions & { endOnFnCall?: boolean }
+    ): Promise<{ parts: MessagePart[], text?: string, calledFunctions: FnCalls[] }>
   }
 
   // ============ TOOLS ============

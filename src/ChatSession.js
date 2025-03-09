@@ -25,13 +25,17 @@ class ChatSession {
     this.messages = []
     if (systemMessage) this.messages.push({ role: 'system', parts: typeof systemMessage === 'string' ? [{ text: systemMessage }] : systemMessage })
     if (options.functions) {
-      this.functions = options.functions
-      this.loading = this._loadFunctions(options.functions)
+      this.setFunctions(options.functions)
     } else {
       this.loading = Promise.resolve()
     }
 
     this._calledFunctionsForRound = []
+  }
+
+  setFunctions (functions) {
+    this.functions = functions
+    this.loading = this._loadFunctions(functions)
   }
 
   async _loadFunctions (functions) {
@@ -164,6 +168,12 @@ class ChatSession {
     } else {
       this.messages.push({ role: 'user', text: message })
     }
+    return this._sendMessages(chunkCb, options)
+  }
+
+  async setAndSendMessages (messages, chunkCb, options) {
+    await this.loading
+    this.messages = messages
     return this._sendMessages(chunkCb, options)
   }
 }
