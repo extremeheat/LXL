@@ -161,8 +161,12 @@ class GeminiCompleteService extends BaseCompleteService {
     }
   }
 
-  async requestTranscription(model, audioStream, options) {
+  async requestTranscription (model, audioStream, options) {
     throw new Error('Transcription is not supported for Gemini yet - use OpenAI instead')
+  }
+
+  requestSpeechSynthesis (model, text, options) {
+    throw new Error('Speech synthesis is not supported for Gemini yet - use OpenAI instead')
   }
 
   async countTokens (model, content) {
@@ -272,8 +276,13 @@ class OpenAICompleteService extends BaseCompleteService {
     })
   }
 
-  async requestTranscription(model, audioStream, options) {
+  async requestTranscription (model, audioStream, options) {
     const res = await openai.transcribeAudioEx(this.apiBase, this.apiKey, model, audioStream, options)
+    return res
+  }
+
+  async requestSpeechSynthesis (model, text, options) {
+    const res = await openai.synthesizeSpeechEx(this.apiBase, this.apiKey, model, text, options)
     return res
   }
 

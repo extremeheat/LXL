@@ -2,7 +2,7 @@ const { cleanMessage } = require('./util')
 const caching = require('./caching')
 const logging = require('./tools/logging')
 
-const { OpenAICompleteService, GeminiCompleteService } = require('./CompleteServices')
+const { OpenAICompleteService, GeminiCompleteService } = require('./CompleteImpls')
 
 function assert (condition, message = 'Assertion failed') {
   if (!condition) throw new Error(message)
@@ -123,9 +123,15 @@ class CompletionService {
     return saveIfCaching(ret)
   }
 
-  async requestTranscription (author, model, audioStream, options = {}) {
+  async requestTranscription (author, model, audioStream, format, options = {}) {
     const service = this._getService(author)
+    options.responseFormat = format
     return service.requestTranscription(model, audioStream, options)
+  }
+
+  async requestSpeechSynthesis (author, model, text, options = {}) {
+    const service = this._getService(author)
+    return service.requestSpeechSynthesis(model, text, options)
   }
 
   async countTokens (author, model, content) {

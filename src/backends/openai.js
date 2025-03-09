@@ -192,13 +192,27 @@ async function transcribeAudioEx (apiBase, apiKey, model, stream, options) {
   return transcription
 }
 
+async function synthesizeSpeechEx (apiBase, apiKey, model, text, options) {
+  const openai = new OpenAI({ apiKey, baseURL: apiBase })
+  const payload = {
+    model,
+    text,
+    voice: options.voice,
+    speed: options.speed,
+    pitch: options.pitch,
+    volume: options.volume
+  }
+  const speech = await openai.speech.synthesis.create(payload)
+  return speech
+}
+
 async function listModels (baseURL, apiKey) {
   const openai = new OpenAI({ baseURL, apiKey })
   const list = await openai.models.list()
   return list.body.data
 }
 
-module.exports = { generateCompletion, generateChatCompletionEx, generateChatCompletionIn, transcribeAudioEx, listModels }
+module.exports = { generateCompletion, generateChatCompletionEx, generateChatCompletionIn, transcribeAudioEx, synthesizeSpeechEx, listModels }
 
 /*
 via https://platform.openai.com/docs/guides/text-generation/chat-completions-api
