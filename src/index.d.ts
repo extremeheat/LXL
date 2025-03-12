@@ -39,7 +39,7 @@ declare module 'langxlang' {
     // `{"keys": {"openai": "your-openai-key", "gemini": "your-gemini-key"}}`
     // In this options object, you can specify generation options that will be applied by default to
     // all requestCompletion calls. You can override these options by passing them in the requestCompletion call.
-    constructor(apiKeys: Record<ModelAuthor, string>, options?: { apiBase?: string, generationOptions: CompletionOptions })
+    constructor(apiKeys: { [k in ModelAuthor]?: string }, options?: { apiBase?: string, generationOptions?: CompletionOptions })
 
     cachePath: string
 

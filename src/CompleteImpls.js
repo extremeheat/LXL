@@ -221,6 +221,7 @@ class OpenAICompleteService extends BaseCompleteService {
           for (const key in msg.parts) {
             const value = msg.parts[key]
             if (value.text) {
+              if (typeof value.text !== 'string') throw new Error('Expected part.text to be a string: ' + JSON.stringify(value))
               updated.push({ type: 'text', text: value.text })
             } else if (value.imageURL) {
               updated.push({ type: 'image_url', image_url: { url: value.imageURL, detail: value.imageDetail } })
@@ -236,6 +237,9 @@ class OpenAICompleteService extends BaseCompleteService {
             }
           }
           msg.content = updated
+          if (msg.content.every((e) => e.type === 'text')) {
+            msg.content = msg.content.map((e) => e.text).join('')
+          }
           delete msg.parts
         }
         return msg
