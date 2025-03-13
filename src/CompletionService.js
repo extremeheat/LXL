@@ -54,7 +54,7 @@ class CompletionService {
   _getService (author) {
     const service = this.servicesByAuthor[author]
     if (!service) throw new Error(`No such model family: ${author}`)
-    if (!service.ok()) throw new Error(`No API key for ${author}`)
+    if (!service.ok()) throw new Error(`No API key for model provider '${author}' was provided`)
     return service
   }
 

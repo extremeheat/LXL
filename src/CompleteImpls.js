@@ -243,7 +243,7 @@ class OpenAICompleteService extends BaseCompleteService {
           delete msg.parts
         }
         return msg
-      }).filter((msg) => msg.content),
+      }).filter((msg) => msg.content || msg.tool_calls),
       {
         baseURL: this.apiBase,
         apiKey: this.apiKey,
