@@ -13,7 +13,7 @@ export type ChunkCb = ({ n: number, textDelta: string, parts: MessagePart, done:
 
 export type FnCall = { id?: number, name: string, args: Record<string, any> }
 // TODO: Turn FnCalls from Record<number, FnCall> to FnCall[] (breaking)
-export type FnCalls = Record<number, FnCall>
+export type FnCalls = FnCall[]
 export type CompletionResponse = { type: 'text' | 'function', parts: MessagePart[], text?: string, fnCalls?: FnCalls }
 
 declare module 'langxlang' {
@@ -155,7 +155,7 @@ declare module 'langxlang' {
       messages: Message[],
       chunkCallback?: ChunkCb,
       generationOptions?: CompletionOptions & { endOnFnCall?: boolean }
-    ): Promise<{ parts: MessagePart[], text?: string, calledFunctions: FnCall[] }>
+    ): Promise<{ parts: MessagePart[], text?: string, calledFunctions: FnCall[][], endReason: 'text' | 'function' }>
   }
 
   // ============ TOOLS ============

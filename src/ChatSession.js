@@ -135,9 +135,6 @@ class ChatSession {
       this._calledFunctionsForRound.push(response.fnCalls)
     } else if (response.type === 'function') {
       this._calledFunctionsForRound.push(response.fnCalls)
-      if (Array.isArray(response.fnCalls) && !response.fnCalls.length) {
-        throw new Error('No function calls returned, but type is function')
-      }
       // we need to call the function with the payload and then send the result back to the model
       for (const index in response.fnCalls) {
         const call = response.fnCalls[index]
@@ -162,7 +159,7 @@ class ChatSession {
     for (const round of this._calledFunctionsForRound) {
       calledFunctions.push(...Object.values(round))
     }
-    return { parts: response.parts, text: response.text, calledFunctions: this._calledFunctionsForRound }
+    return { parts: response.parts, text: response.text, calledFunctions: this._calledFunctionsForRound, endReason: response.type }
   }
 
   async sendMessage (message, chunkCb, options) {

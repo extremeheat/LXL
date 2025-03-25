@@ -139,18 +139,9 @@ class GeminiCompleteService extends BaseCompleteService {
       return [result]
     } else if (response.functionCalls()) {
       const calls = response.functionCalls()
-      const fnCalls = {}
-      for (let i = 0; i < calls.length; i++) {
-        const call = calls[i]
-        fnCalls[i] = {
-          id: i,
-          name: call.name,
-          args: call.args
-        }
-      }
       const result = {
         type: 'function',
-        fnCalls,
+        fnCalls: calls,
         // TODO: map the content parts here to LXL's format
         parts: response.parts,
         safetyRatings: response.safetyRatings
@@ -273,7 +264,9 @@ class OpenAICompleteService extends BaseCompleteService {
       return {
         type: choiceType,
         isTruncated: choice.finishReason === 'length',
-        fnCalls: choice.fnCalls,
+        // { 0: { id: 'call_n', name: 'Classify', args: '{"choice":"Angry"}' } } => [ { id: 'call_n', name: 'Classify', args: { choice: 'Angry' } } ]
+        // fnCalls: choice.fnCalls && Object.fromEntries(Object.entries(choice.fnCalls).map(([key, value]) => [key, { id: value.id, name: value.name, args: JSON.parse(value.args) }])),
+        fnCalls: choice.fnCalls && Object.values(choice.fnCalls).map((value) => ({ id: value.id, name: value.name, args: JSON.parse(value.args) })),
         parts,
         text: content
       }
