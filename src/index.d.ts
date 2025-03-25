@@ -14,7 +14,8 @@ export type ChunkCb = ({ n: number, textDelta: string, parts: MessagePart, done:
 export type FnCall = { id?: number, name: string, args: Record<string, any> }
 // TODO: Turn FnCalls from Record<number, FnCall> to FnCall[] (breaking)
 export type FnCalls = FnCall[]
-export type CompletionResponse = { type: 'text' | 'function', parts: MessagePart[], text?: string, fnCalls?: FnCalls }
+export type Usage = { inputTokens: number, outputTokens: number, totalTokens: number, cachedInputTokens?: number }
+export type CompletionResponse = { type: 'text' | 'function', parts: MessagePart[], text?: string, fnCalls?: FnCalls, requestUsage?: Usage }
 
 declare module 'langxlang' {
   type CompletionOptions = {
@@ -146,7 +147,8 @@ declare module 'langxlang' {
     sendMessage(userMessage: string | MessagePart[], chunkCallback?: ChunkCb, generationOptions?: CompletionOptions & { endOnFnCall?: boolean }): Promise<{
       parts: MessagePart[],
       text?: string,
-      calledFunctions: FnCalls[]
+      calledFunctions: FnCalls[],
+      usage?: Usage
     }>
 
     setFunctions(functions: Functions): void
@@ -155,7 +157,7 @@ declare module 'langxlang' {
       messages: Message[],
       chunkCallback?: ChunkCb,
       generationOptions?: CompletionOptions & { endOnFnCall?: boolean }
-    ): Promise<{ parts: MessagePart[], text?: string, calledFunctions: FnCall[][], endReason: 'text' | 'function' }>
+    ): Promise<{ parts: MessagePart[], text?: string, calledFunctions: FnCall[][], endReason: 'text' | 'function', usage?: Usage }>
   }
 
   // ============ TOOLS ============

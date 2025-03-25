@@ -66,8 +66,8 @@ class CompletionService {
     if (options.enableCaching) {
       const cachedResponse = await caching.getCachedResponse(model, ['', text])
       if (cachedResponse) {
-        chunkCb?.({ done: false, content: cachedResponse.text })
-        chunkCb?.({ done: true, delta: '' })
+        chunkCb?.({ done: false, textDelta: cachedResponse.text, parts: cachedResponse.parts })
+        chunkCb?.({ done: true, textDelta: '' })
         return [cachedResponse]
       }
     }
@@ -79,7 +79,7 @@ class CompletionService {
     const saveIfCaching = (responses) => {
       this.log?.push(structuredClone({ author, model, system: '', user: text, responses, generationOptions: genOpts, date: new Date() }))
       const [response] = responses
-      if (response && response.content && options.enableCaching) {
+      if (response && response.parts && options.enableCaching) {
         caching.addResponseToCache(model, ['', text], response)
       }
       return responses
@@ -105,15 +105,15 @@ class CompletionService {
     if (enableCaching) {
       const cachedResponse = await caching.getCachedResponse(model, messages)
       if (cachedResponse) {
-        chunkCb?.({ done: false, content: cachedResponse.text })
-        chunkCb?.({ done: true, delta: '' })
+        chunkCb?.({ done: false, textDelta: cachedResponse.text, parts: cachedResponse.parts })
+        chunkCb?.({ done: true, textDelta: '' })
         return [cachedResponse]
       }
     }
     const saveIfCaching = (responses) => {
       this.log?.push(structuredClone({ author, model, messages, responses, generationOptions, date: new Date() }))
       const [response] = responses
-      if (response && response.content && enableCaching) {
+      if (response && response.parts && enableCaching) {
         caching.addResponseToCache(model, messages, response)
       }
       return responses

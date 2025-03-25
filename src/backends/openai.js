@@ -15,11 +15,16 @@ function safetyCheck (choices) {
   return choices
 }
 
-function createChunkProcessor (chunkCb, resultChoices) {
+function createChunkProcessor (chunkCb, resultChoices, usageData) {
   return function (chunk) {
     if (!chunk) {
       chunkCb?.({ done: true, textDelta: '', parts: [] })
       return
+    }
+    if (chunk.usage) {
+      for (const key in chunk.usage) {
+        usageData[key] = chunk.usage[key]
+      }
     }
     for (const choiceId in chunk.choices) {
       const choice = chunk.choices[choiceId]
@@ -60,6 +65,7 @@ function createChunkProcessor (chunkCb, resultChoices) {
   }
 }
 
+// unused
 async function generateChatCompletionEx (model, messages, options, chunkCb) {
   const openai = new OpenAI(options)
   const completion = await openai.chat.completions.create({
@@ -71,11 +77,19 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
     ...options.generationConfig
   })
   const resultChoices = []
-  const handler = createChunkProcessor(chunkCb, resultChoices)
+  const usageData = {}
+  const handler = createChunkProcessor(chunkCb, resultChoices, usageData)
   for await (const chunk of completion) {
     handler(chunk)
   }
-  return { choices: safetyCheck(resultChoices) }
+  return {
+    choices: safetyCheck(resultChoices),
+    usage: {
+      inputTokens: usageData.input_tokens,
+      outputTokens: usageData.output_tokens,
+      totalTokens: usageData.total_tokens
+    }
+  }
 }
 
 // Updated to use Fetch API
@@ -135,6 +149,7 @@ async function _sendApiChatComplete (apiBase, apiKey, payload, chunkCb) {
 async function generateChatCompletionIn (model, messages, options, chunkCb) {
   debug('openai.generateChatCompletionIn', model, options)
   const resultChoices = []
+  const usageData = {}
   await _sendApiChatComplete(options.baseURL || 'https://api.openai.com/v1', options.apiKey, {
     model,
     ...options.generationConfig,
@@ -142,9 +157,16 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
     stream: true,
     tools: options.functions?.map((fn) => ({ type: 'function', function: fn })),
     tool_choice: options.functions ? 'auto' : undefined
-  }, createChunkProcessor(chunkCb, resultChoices))
+  }, createChunkProcessor(chunkCb, resultChoices, usageData))
   debug('openai.generateChatCompletionIn result', JSON.stringify(resultChoices))
-  return { choices: safetyCheck(resultChoices) }
+  return {
+    choices: safetyCheck(resultChoices),
+    usage: {
+      inputTokens: usageData.input_tokens,
+      outputTokens: usageData.output_tokens,
+      totalTokens: usageData.total_tokens
+    }
+  }
 }
 
 async function generateCompletion (model, system, user, options = {}) {

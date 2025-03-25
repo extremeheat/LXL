@@ -52,12 +52,12 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
     let i = 0
     for (const candidate of result.candidates) {
       aggParts.push(...candidate.content.parts)
-      if (!candidate.finishReason || candidate.finishReason === 'STOP') {
+      if (!candidate.finishReason || candidate.finishReason === 'STOP' || candidate.finishReason === 'MAX_TOKENS') {
         const text = candidate.content.parts
           .filter(part => part.text !== '')
           .reduce((acc, part) => acc + part.text, '')
         if (candidate.content.functionCalls?.length) {
-          // Function response
+          // Function response - no special handling; handled below
           chunkCb?.({
             n: i,
             parts: convertGeminiPartsToLXLParts(candidate.content.parts),
@@ -91,7 +91,23 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
     _functionCalls: functionCalls,
     text: () => text,
     functionCalls: () => functionCalls,
-    parts: convertGeminiPartsToLXLParts(aggParts)
+    parts: convertGeminiPartsToLXLParts(aggParts),
+    //   UsageMetadata {
+    //     /** Number of tokens in the prompt. */
+    //     promptTokenCount: number;
+    //     /** Total number of tokens across the generated candidates. */
+    //     candidatesTokenCount: number;
+    //     /** Total token count for the generation request (prompt + candidates). */
+    //     totalTokenCount: number;
+    //     /** Total token count in the cached part of the prompt, i.e. in the cached content. */
+    //     cachedContentTokenCount?: number;
+    // }
+    usage: {
+      inputTokens: response.usage.promptTokenCount,
+      outputTokens: response.usage.candidatesTokenCount,
+      totalTokens: response.usage.totalTokenCount,
+      cachedInputTokens: response.usage.cachedContentTokenCount
+    }
   }
 }
 

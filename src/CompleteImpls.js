@@ -268,7 +268,8 @@ class OpenAICompleteService extends BaseCompleteService {
         // fnCalls: choice.fnCalls && Object.fromEntries(Object.entries(choice.fnCalls).map(([key, value]) => [key, { id: value.id, name: value.name, args: JSON.parse(value.args) }])),
         fnCalls: choice.fnCalls && Object.values(choice.fnCalls).map((value) => ({ id: value.id, name: value.name, args: JSON.parse(value.args) })),
         parts,
-        text: content
+        text: content,
+        requestUsage: response.usage
       }
     })
   }

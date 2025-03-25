@@ -159,7 +159,7 @@ class ChatSession {
     for (const round of this._calledFunctionsForRound) {
       calledFunctions.push(...Object.values(round))
     }
-    return { parts: response.parts, text: response.text, calledFunctions: this._calledFunctionsForRound, endReason: response.type }
+    return { parts: response.parts, text: response.text, calledFunctions: this._calledFunctionsForRound, endReason: response.type, usage: response.requestUsage }
   }
 
   async sendMessage (message, chunkCb, options) {
