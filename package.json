@@ -42,7 +42,7 @@
     "standard": "^17.0.0"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
+    "@google/generative-ai": "^0.24.0",
     "caller": "^1.1.0",
     "debug": "^4.3.4",
     "fast-xml-parser": "^4.3.6",
