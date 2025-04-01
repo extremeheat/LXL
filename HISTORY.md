@@ -1,3 +1,17 @@
+### 0.8.0
+* [Add audio APIs, new ChatSession methods, token usage information (#64)](https://github.com/extremeheat/LXL/commit/acef563c82177d6c80d83828536ef338286bfc7f) (thanks @extremeheat)
+  * Breaking: fnCalls is now an array instead of an array-like object
+* [Update mdp, docs and fixes to types and ChatSession (#55)](https://github.com/extremeheat/LXL/commit/8da7856bd2f8f20f5fd3d6922eb9c9f16b60eb13) (thanks @extremeheat)
+* [Refactor API to split models by author, refactor handling of function calls (#54)](https://github.com/extremeheat/LXL/commit/96426e376d1707341a1ac72b853cad81f37695ae) (thanks @extremeheat)
+  * **Breaking changes**
+    * CompletionService now takes author parameter before requestCompletion, requestChatCompletion, countTokensInMessages and countTokens
+    * ChatSession now takes in author before model
+    * Function call syntax changed. Functions are now handled more naturally with properties on the function object itself
+* [Add playground, support images in input (#43)](https://github.com/extremeheat/LXL/commit/3ccbd450764f84a0166f51acaae2cfdf85a6f12a) (thanks @extremeheat)
+  * Support images/rich vars in MDP
+  * Support images in logging
+* [Add a logging tool, caching fix (#40)](https://github.com/extremeheat/LXL/commit/0078901d4b25b3d425560defe9d32c5dbb4c5e2b) (thanks @extremeheat)
+
 ## 0.7.0
 ### Breaking
 * Remove old "guidance regions"
