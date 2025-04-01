@@ -2,7 +2,7 @@ const { cleanMessage } = require('./util')
 const caching = require('./caching')
 const logging = require('./tools/logging')
 
-const { OpenAICompleteService, GeminiCompleteService } = require('./CompleteServices')
+const { OpenAICompleteService, GeminiCompleteService } = require('./CompleteImpls')
 
 function assert (condition, message = 'Assertion failed') {
   if (!condition) throw new Error(message)
@@ -54,7 +54,7 @@ class CompletionService {
   _getService (author) {
     const service = this.servicesByAuthor[author]
     if (!service) throw new Error(`No such model family: ${author}`)
-    if (!service.ok()) throw new Error(`No API key for ${author}`)
+    if (!service.ok()) throw new Error(`No API key for model provider '${author}' was provided`)
     return service
   }
 
@@ -66,8 +66,8 @@ class CompletionService {
     if (options.enableCaching) {
       const cachedResponse = await caching.getCachedResponse(model, ['', text])
       if (cachedResponse) {
-        chunkCb?.({ done: false, content: cachedResponse.text })
-        chunkCb?.({ done: true, delta: '' })
+        chunkCb?.({ done: false, textDelta: cachedResponse.text, parts: cachedResponse.parts })
+        chunkCb?.({ done: true, textDelta: '' })
         return [cachedResponse]
       }
     }
@@ -79,7 +79,7 @@ class CompletionService {
     const saveIfCaching = (responses) => {
       this.log?.push(structuredClone({ author, model, system: '', user: text, responses, generationOptions: genOpts, date: new Date() }))
       const [response] = responses
-      if (response && response.content && options.enableCaching) {
+      if (response && response.parts && options.enableCaching) {
         caching.addResponseToCache(model, ['', text], response)
       }
       return responses
@@ -105,15 +105,15 @@ class CompletionService {
     if (enableCaching) {
       const cachedResponse = await caching.getCachedResponse(model, messages)
       if (cachedResponse) {
-        chunkCb?.({ done: false, content: cachedResponse.text })
-        chunkCb?.({ done: true, delta: '' })
+        chunkCb?.({ done: false, textDelta: cachedResponse.text, parts: cachedResponse.parts })
+        chunkCb?.({ done: true, textDelta: '' })
         return [cachedResponse]
       }
     }
     const saveIfCaching = (responses) => {
       this.log?.push(structuredClone({ author, model, messages, responses, generationOptions, date: new Date() }))
       const [response] = responses
-      if (response && response.content && enableCaching) {
+      if (response && response.parts && enableCaching) {
         caching.addResponseToCache(model, messages, response)
       }
       return responses
@@ -121,6 +121,17 @@ class CompletionService {
 
     const ret = await service.requestChatComplete(model, messages, { ...this.defaultGenerationOptions, ...generationOptions }, functions, chunkCb)
     return saveIfCaching(ret)
+  }
+
+  async requestTranscription (author, model, audioStream, format, options = {}) {
+    const service = this._getService(author)
+    options.responseFormat = format
+    return service.requestTranscription(model, audioStream, options)
+  }
+
+  async requestSpeechSynthesis (author, model, text, options = {}) {
+    const service = this._getService(author)
+    return service.requestSpeechSynthesis(model, text, options)
   }
 
   async countTokens (author, model, content) {

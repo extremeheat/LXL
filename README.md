@@ -97,7 +97,7 @@ Note: as an alternative to explicitly passing the API keys in the constructor yo
 * or, define the keys inside `/.local/share/lxl-cache.json` (linux), `~/Library/Application Support/lxl-cache.json` (mac), or `%appdata%\lxl-cache.json` (windows) with the structure
 `{"keys": {"openai": "your-openai-key", "gemini": "your-gemini-key"}}`
 
-#### `async requestCompletion(author: string, model: string, systemPrompt: string, userPrompt: string)`
+#### `async requestCompletion(author: string, model: string, systemPrompt: string, userPrompt: string): Promise<CompletionResponse[]>`
 
 Request a non-streaming completion from the model.
 
@@ -106,6 +106,17 @@ Request a non-streaming completion from the model.
 Request a completion from the model with a sequence of chat messages which have roles. A message should look like
 `{ role: 'user', content: 'Hello!' }` or `{ role: 'system', content: 'Hi!' }`. The `role` can be either `user`, `system` or `assistant`, no
 matter the model in use.
+
+#### Request usage
+
+Both .requestCompletion and .requestChatCompletion return an array of `CompletionResponse` objects. Each object has the following properties:
+```ts
+type: 'text' | 'function', parts: MessagePart[], text?: string, fnCalls?: FnCalls, requestUsage?: Usage
+```
+
+Inside .requestUsage is an object that contains token usage for the request in the format of `{ inputTokens: number, outputTokens: number, totalTokens: number, cachedInputTokens?: number }`.
+
+Note that the `.requestUsage` is global to the request, so it's the sum of all the tokens in all the choices processed as input and output'ed in the request.
 
 ### ChatSession
 

@@ -139,18 +139,9 @@ class GeminiCompleteService extends BaseCompleteService {
       return [result]
     } else if (response.functionCalls()) {
       const calls = response.functionCalls()
-      const fnCalls = {}
-      for (let i = 0; i < calls.length; i++) {
-        const call = calls[i]
-        fnCalls[i] = {
-          id: i,
-          name: call.name,
-          args: call.args
-        }
-      }
       const result = {
         type: 'function',
-        fnCalls,
+        fnCalls: calls,
         // TODO: map the content parts here to LXL's format
         parts: response.parts,
         safetyRatings: response.safetyRatings
@@ -159,6 +150,14 @@ class GeminiCompleteService extends BaseCompleteService {
     } else {
       throw new Error('Unknown response from Gemini')
     }
+  }
+
+  async requestTranscription (model, audioStream, options) {
+    throw new Error('Transcription is not supported for Gemini yet - use OpenAI instead')
+  }
+
+  requestSpeechSynthesis (model, text, options) {
+    throw new Error('Speech synthesis is not supported for Gemini yet - use OpenAI instead')
   }
 
   async countTokens (model, content) {
@@ -213,6 +212,7 @@ class OpenAICompleteService extends BaseCompleteService {
           for (const key in msg.parts) {
             const value = msg.parts[key]
             if (value.text) {
+              if (typeof value.text !== 'string') throw new Error('Expected part.text to be a string: ' + JSON.stringify(value))
               updated.push({ type: 'text', text: value.text })
             } else if (value.imageURL) {
               updated.push({ type: 'image_url', image_url: { url: value.imageURL, detail: value.imageDetail } })
@@ -228,10 +228,13 @@ class OpenAICompleteService extends BaseCompleteService {
             }
           }
           msg.content = updated
+          if (msg.content.every((e) => e.type === 'text')) {
+            msg.content = msg.content.map((e) => e.text).join('')
+          }
           delete msg.parts
         }
         return msg
-      }).filter((msg) => msg.content),
+      }).filter((msg) => msg.content || msg.tool_calls),
       {
         baseURL: this.apiBase,
         apiKey: this.apiKey,
@@ -261,11 +264,24 @@ class OpenAICompleteService extends BaseCompleteService {
       return {
         type: choiceType,
         isTruncated: choice.finishReason === 'length',
-        fnCalls: choice.fnCalls,
+        // { 0: { id: 'call_n', name: 'Classify', args: '{"choice":"Angry"}' } } => [ { id: 'call_n', name: 'Classify', args: { choice: 'Angry' } } ]
+        // fnCalls: choice.fnCalls && Object.fromEntries(Object.entries(choice.fnCalls).map(([key, value]) => [key, { id: value.id, name: value.name, args: JSON.parse(value.args) }])),
+        fnCalls: choice.fnCalls && Object.values(choice.fnCalls).map((value) => ({ id: value.id, name: value.name, args: JSON.parse(value.args) })),
         parts,
-        text: content
+        text: content,
+        requestUsage: response.usage
       }
     })
+  }
+
+  async requestTranscription (model, audioStream, options) {
+    const res = await openai.transcribeAudioEx(this.apiBase, this.apiKey, model, audioStream, options)
+    return res
+  }
+
+  async requestSpeechSynthesis (model, text, options) {
+    const res = await openai.synthesizeSpeechEx(this.apiBase, this.apiKey, model, text, options)
+    return res
   }
 
   async listModels () {

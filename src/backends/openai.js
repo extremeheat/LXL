@@ -1,5 +1,4 @@
 const OpenAI = require('openai')
-const https = require('https')
 const debug = require('debug')('lxl')
 const SafetyError = require('../SafetyError')
 
@@ -12,17 +11,20 @@ function safetyCheck (choices) {
     } else {
       throw new SafetyError('Completions were blocked by OpenAI safety filter')
     }
-  } else {
-    return choices
   }
+  return choices
 }
 
-function createChunkProcessor (chunkCb, resultChoices) {
+function createChunkProcessor (chunkCb, resultChoices, usageData) {
   return function (chunk) {
-    // debug('[OpenAI] Chunk', JSON.stringify(chunk))
     if (!chunk) {
-      chunkCb?.({ done: true, delta: '' })
+      chunkCb?.({ done: true, textDelta: '', parts: [] })
       return
+    }
+    if (chunk.usage) {
+      for (const key in chunk.usage) {
+        usageData[key] = chunk.usage[key]
+      }
     }
     for (const choiceId in chunk.choices) {
       const choice = chunk.choices[choiceId]
@@ -56,16 +58,16 @@ function createChunkProcessor (chunkCb, resultChoices) {
           }
         } else if (delta.content) {
           resultChoice.content += delta.content
-          chunkCb?.({ n: choiceId, textDelta: delta.content, done: false })
+          chunkCb?.({ n: Number(choiceId), textDelta: delta.content, parts: [{ text: delta.content }], done: false })
         }
       } else throw new Error('Unknown chunk type')
     }
   }
 }
 
-// With OpenAI's Node.js SDK
+// unused
 async function generateChatCompletionEx (model, messages, options, chunkCb) {
-  const openai = new OpenAI(options) // .baseURL to change API endpoint
+  const openai = new OpenAI(options)
   const completion = await openai.chat.completions.create({
     model,
     messages,
@@ -75,83 +77,79 @@ async function generateChatCompletionEx (model, messages, options, chunkCb) {
     ...options.generationConfig
   })
   const resultChoices = []
-  const handler = createChunkProcessor(chunkCb, resultChoices)
+  const usageData = {}
+  const handler = createChunkProcessor(chunkCb, resultChoices, usageData)
   for await (const chunk of completion) {
     handler(chunk)
   }
-  return { choices: safetyCheck(resultChoices) }
-}
-
-// Directly use the OpenAI REST API
-function _sendApiChatComplete (apiBase, apiKey, payload, chunkCb) {
-  const url = new URL(apiBase + '/chat/completions')
-  const chunkPrefixLen = 'data: '.length
-  const options = {
-    hostname: url.hostname,
-    port: 443,
-    path: url.pathname,
-    method: 'POST',
-    headers: {
-      Accept: 'text/event-stream',
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-      Authorization: 'Bearer ' + apiKey
+  return {
+    choices: safetyCheck(resultChoices),
+    usage: {
+      inputTokens: usageData.input_tokens,
+      outputTokens: usageData.output_tokens,
+      totalTokens: usageData.total_tokens
     }
   }
-  if (url.protocol === 'https:') {
-    options.port = 443
-  } else if (url.protocol === 'http:') {
-    options.port = 80
+}
+
+// Updated to use Fetch API
+async function _sendApiChatComplete (apiBase, apiKey, payload, chunkCb) {
+  const url = new URL(`${apiBase}/chat/completions`)
+  const headers = {
+    Accept: 'text/event-stream',
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    Authorization: `Bearer ${apiKey}`
   }
-  debug('[OpenAI] /completions Payload', JSON.stringify(payload))
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      if (res.statusCode !== 200) {
-        debug(`[OpenAI] Server returned status code ${res.statusCode}`, res.statusMessage, res.headers)
-        reject(new Error(`Server returned status code ${res.statusCode} ${res.statusMessage}`))
-        return
-      }
-      res.setEncoding('utf-8')
 
-      let buffer = ''
-      if (payload.stream) {
-        res.on('data', (chunk) => {
-          buffer += chunk
-          const lines = buffer.split('\n')
-          buffer = lines.pop() // ''
+  debug('[OpenAI] /completions Payload', url.toString(), headers, JSON.stringify(payload))
 
-          for (const line of lines) {
-            if (line === 'data: [DONE]') {
-              chunkCb(null)
-              resolve()
-            } else if (line.startsWith('data: ')) {
-              chunkCb(JSON.parse(line.slice(chunkPrefixLen)))
-            }
-          }
-        })
-      } else {
-        res.on('data', (chunk) => {
-          buffer += chunk
-        })
-        res.on('end', () => {
-          chunkCb(JSON.parse(buffer))
-          resolve()
-        })
-      }
-    })
-
-    req.on('error', (error) => {
-      reject(error)
-    })
-    req.write(JSON.stringify(payload))
-    req.end()
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload)
   })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    debug(`[OpenAI] Server returned status code ${response.status}`, errorText)
+    throw new Error(`Server returned status code ${response.status}: ${errorText}`)
+  }
+
+  if (!payload.stream) {
+    const data = await response.json()
+    chunkCb(data)
+    return
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder('utf-8')
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value)
+    const lines = buffer.split('\n')
+    buffer = lines.pop() // Keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (line === 'data: [DONE]') {
+        chunkCb(null)
+      } else if (line.startsWith('data: ')) {
+        const jsonData = line.slice('data: '.length)
+        chunkCb(JSON.parse(jsonData))
+      }
+    }
+  }
 }
 
 async function generateChatCompletionIn (model, messages, options, chunkCb) {
   debug('openai.generateChatCompletionIn', model, options)
   const resultChoices = []
+  const usageData = {}
   await _sendApiChatComplete(options.baseURL || 'https://api.openai.com/v1', options.apiKey, {
     model,
     ...options.generationConfig,
@@ -159,9 +157,16 @@ async function generateChatCompletionIn (model, messages, options, chunkCb) {
     stream: true,
     tools: options.functions?.map((fn) => ({ type: 'function', function: fn })),
     tool_choice: options.functions ? 'auto' : undefined
-  }, createChunkProcessor(chunkCb, resultChoices))
+  }, createChunkProcessor(chunkCb, resultChoices, usageData))
   debug('openai.generateChatCompletionIn result', JSON.stringify(resultChoices))
-  return { choices: safetyCheck(resultChoices) }
+  return {
+    choices: safetyCheck(resultChoices),
+    usage: {
+      inputTokens: usageData.input_tokens,
+      outputTokens: usageData.output_tokens,
+      totalTokens: usageData.total_tokens
+    }
+  }
 }
 
 async function generateCompletion (model, system, user, options = {}) {
@@ -172,13 +177,54 @@ async function generateCompletion (model, system, user, options = {}) {
   return completion
 }
 
+async function transcribeAudioEx (apiBase, apiKey, model, stream, options) {
+  const openai = new OpenAI({ apiKey, baseURL: apiBase })
+  const payload = {
+    model,
+    file: stream instanceof Buffer ? new Blob([stream], { type: 'audio/wav' }) : stream,
+    temperature: options.temperature,
+    response_format: options.responseFormat,
+    timestamp_granularities: options.granularity
+  }
+
+  if (payload.timestamp_granularities === 'word' || payload.timestamp_granularities === 'sentence') {
+    if (!payload.response_format) {
+      payload.response_format = 'verbose_json'
+    }
+  }
+
+  const transcription = await openai.speech.transcription.create(payload)
+  return transcription
+}
+
+async function synthesizeSpeechEx (apiBase, apiKey, model, text, options) {
+  const openai = new OpenAI({ apiKey, baseURL: apiBase })
+  const payload = {
+    model,
+    text,
+    voice: options.voice,
+    speed: options.speed,
+    pitch: options.pitch,
+    volume: options.volume
+  }
+  const speech = await openai.speech.synthesis.create(payload)
+  return speech
+}
+
 async function listModels (baseURL, apiKey) {
   const openai = new OpenAI({ baseURL, apiKey })
   const list = await openai.models.list()
   return list.body.data
 }
 
-module.exports = { generateCompletion, generateChatCompletionEx, generateChatCompletionIn, listModels }
+module.exports = {
+  generateCompletion,
+  generateChatCompletionEx,
+  generateChatCompletionIn,
+  transcribeAudioEx,
+  synthesizeSpeechEx,
+  listModels
+}
 
 /*
 via https://platform.openai.com/docs/guides/text-generation/chat-completions-api

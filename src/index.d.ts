@@ -1,21 +1,21 @@
-type ModelAuthor = 'google' | 'openai'
-type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
-type Role = 'system' | 'user' | 'assistant' | 'guidance'
-type MessagePart =
+export type ModelAuthor = 'google' | 'openai'
+export type Model = 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo-preview' | 'gemini-1.0-pro' | 'gemini-1.5-pro-latest'
+export type Role = 'system' | 'user' | 'assistant' | 'guidance'
+export type MessagePart =
   | { text: string }
   | { imageURL: string, imageDetail?}
   | { imageB64Url: string,  imageDetail?}
   | { data: Buffer, mimeType?: string, imageDetail? }
-type Message =
+export type Message =
   | { role: Role, text: string }
   | { role: Role, parts: MessagePart[] }
-type ChunkCb = ({ n: number, textDelta: string, parts: MessagePart, done: boolean }) => void
-type FnCalls = Record<number, {
-  id: number,
-  name: string,
-  args: Record<string, any>
-}>
-type CompletionResponse = { type: 'text' | 'function', parts: MessagePart[], text?: string, fnCalls?: FnCalls }
+export type ChunkCb = ({ n: number, textDelta: string, parts: MessagePart, done: boolean }) => void
+
+export type FnCall = { id?: number, name: string, args: Record<string, any> }
+// TODO: Turn FnCalls from Record<number, FnCall> to FnCall[] (breaking)
+export type FnCalls = FnCall[]
+export type Usage = { inputTokens: number, outputTokens: number, totalTokens: number, cachedInputTokens?: number }
+export type CompletionResponse = { type: 'text' | 'function', parts: MessagePart[], text?: string, fnCalls?: FnCalls, requestUsage?: Usage }
 
 declare module 'langxlang' {
   type CompletionOptions = {
@@ -26,6 +26,12 @@ declare module 'langxlang' {
     topK?: number
   }
 
+  type TranscriptionOptions = {
+    temperature?: number,
+    responseFormat?: 'json' | 'text' | 'srt' | 'verbose_json' | 'vtt',
+    granularity?: 'word' | 'sentence',
+  }
+
   class CompletionService {
     // Creates an instance of completion service.
     // Note: as an alternative to explicitly passing the API keys in the constructor you can: 
@@ -34,7 +40,7 @@ declare module 'langxlang' {
     // `{"keys": {"openai": "your-openai-key", "gemini": "your-gemini-key"}}`
     // In this options object, you can specify generation options that will be applied by default to
     // all requestCompletion calls. You can override these options by passing them in the requestCompletion call.
-    constructor(apiKeys: { openai: string, gemini: string }, options?: { apiBase?: string, generationOptions: CompletionOptions })
+    constructor(apiKeys: { [k in ModelAuthor]?: string }, options?: { apiBase?: string, generationOptions?: CompletionOptions })
 
     cachePath: string
 
@@ -43,7 +49,7 @@ declare module 'langxlang' {
     // Stop logging LLM requests, return the HTML of the log
     stopLogging(): { exportHTML: () => string }
 
-    listModels(): Promise<{ [typeof ModelAuthor]: Record<Model, /* platform-specific data */ object> }>
+    listModels(): Promise<Record<ModelAuthor, /* platform-specific data */ object>>
 
     countTokens(author: ModelAuthor, model: Model, text: string | MessagePart[]): Promise<number>
     countTokensInMessages(author: ModelAuthor, model: Model, text: string | MessagePart[]): Promise<number>
@@ -55,6 +61,28 @@ declare module 'langxlang' {
     }): Promise<CompletionResponse[]>
     // Request a completion from the model with a sequence of chat messages which have roles.
     requestChatCompletion(author: ModelAuthor | string, model: Model | string, options: { messages: Message[], generationOptions?: CompletionOptions }, chunkCb?: ChunkCb): Promise<CompletionResponse[]>
+
+    requestTranscription(author: ModelAuthor | string, model: Model | string, audioStream: FsReadStream | Blob | Buffer, format: 'json', options?: TranscriptionOptions): Promise<{ text: string }>
+    requestTranscription(author: ModelAuthor | string, model: Model | string, audioStream: FsReadStream | Blob | Buffer, format: 'verbose_json', options?: TranscriptionOptions): Promise<{
+      language: string,
+      text: string,
+      segments?: {
+        start: number,
+        end: number,
+        word: string
+      }[],
+      words?: {
+        start: number,
+        end: number,
+        word: string
+      }[]
+    }>
+    requestSpeechSynthesis (author: ModelAuthor | string, model: Model | string, text: string, options?: {
+      voice?: string,
+      speed?: number,
+      pitch?: number,
+      volume?: number
+    }): Promise<Response>
   }
 
   // Note: GoogleAIStudioCompletionService does NOT use the official AI Studio API, but instead uses a relay server to forward requests to an AIStudio client.
@@ -101,20 +129,35 @@ declare module 'langxlang' {
   }
 
   // The functions that can be used in the user prompt.
-  type ModelFn = (input: any) => any & { description: string, parameters?: Record<string, { type: any, description?: string, required?: boolean }> }
+  type ModelFn = ((input: any) => any) & { description: string, parameters?: Record<string, { type: any, description?: string, required?: boolean }> }
   type Functions = Record<string, ModelFn>
 
-  class ChatSession<T extends any[]> {
+  class ChatSession/*<T extends any[]>*/ {
     // ChatSession is for back and forth conversation between a user an an LLM.
-    constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string)
-    constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
+    constructor(
+      completionService: SomeCompletionService,
+      author: ModelAuthor | string,
+      model: Model | string,
+      systemPrompt?: string,
+      options?: { generationOptions: CompletionOptions, functions?: Functions }
+    )
+    // constructor(completionService: SomeCompletionService, author: ModelAuthor | string, model: Model | string, systemPrompt?: string, options?: { functions?: Functions<T>, generationOptions?: CompletionOptions })
     // Send a message to the LLM and receive a response as return value. The chunkCallback
     // can be defined to listen to bits of the message stream as it's being written by the LLM.
     sendMessage(userMessage: string | MessagePart[], chunkCallback?: ChunkCb, generationOptions?: CompletionOptions & { endOnFnCall?: boolean }): Promise<{
       parts: MessagePart[],
       text?: string,
-      calledFunctions: FnCalls[]
+      calledFunctions: FnCalls[],
+      usage?: Usage
     }>
+
+    setFunctions(functions: Functions): void
+
+    setAndSendMessages(
+      messages: Message[],
+      chunkCallback?: ChunkCb,
+      generationOptions?: CompletionOptions & { endOnFnCall?: boolean }
+    ): Promise<{ parts: MessagePart[], text?: string, calledFunctions: FnCall[][], endReason: 'text' | 'function', usage?: Usage }>
   }
 
   // ============ TOOLS ============

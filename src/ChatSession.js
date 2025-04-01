@@ -25,13 +25,17 @@ class ChatSession {
     this.messages = []
     if (systemMessage) this.messages.push({ role: 'system', parts: typeof systemMessage === 'string' ? [{ text: systemMessage }] : systemMessage })
     if (options.functions) {
-      this.functions = options.functions
-      this.loading = this._loadFunctions(options.functions)
+      this.setFunctions(options.functions)
     } else {
       this.loading = Promise.resolve()
     }
 
     this._calledFunctionsForRound = []
+  }
+
+  setFunctions (functions) {
+    this.functions = functions
+    this.loading = this._loadFunctions(functions)
   }
 
   async _loadFunctions (functions) {
@@ -131,9 +135,6 @@ class ChatSession {
       this._calledFunctionsForRound.push(response.fnCalls)
     } else if (response.type === 'function') {
       this._calledFunctionsForRound.push(response.fnCalls)
-      if (Array.isArray(response.fnCalls) && !response.fnCalls.length) {
-        throw new Error('No function calls returned, but type is function')
-      }
       // we need to call the function with the payload and then send the result back to the model
       for (const index in response.fnCalls) {
         const call = response.fnCalls[index]
@@ -154,7 +155,11 @@ class ChatSession {
     if (guidanceIx !== -1) {
       this.messages.splice(guidanceIx, 1)
     }
-    return { parts: response.parts, text: response.text, calledFunctions: this._calledFunctionsForRound }
+    const calledFunctions = []
+    for (const round of this._calledFunctionsForRound) {
+      calledFunctions.push(...Object.values(round))
+    }
+    return { parts: response.parts, text: response.text, calledFunctions: this._calledFunctionsForRound, endReason: response.type, usage: response.requestUsage }
   }
 
   async sendMessage (message, chunkCb, options) {
@@ -164,6 +169,12 @@ class ChatSession {
     } else {
       this.messages.push({ role: 'user', text: message })
     }
+    return this._sendMessages(chunkCb, options)
+  }
+
+  async setAndSendMessages (messages, chunkCb, options) {
+    await this.loading
+    this.messages = messages
     return this._sendMessages(chunkCb, options)
   }
 }
