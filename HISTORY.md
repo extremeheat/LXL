@@ -1,3 +1,11 @@
+### 0.8.0
+* [Add audio APIs, new ChatSession methods, token usage information (#64)](https://github.com/extremeheat/LXL/commit/acef563c82177d6c80d83828536ef338286bfc7f) (thanks @extremeheat)
+* [Update mdp, docs and fixes to types and ChatSession (#55)](https://github.com/extremeheat/LXL/commit/8da7856bd2f8f20f5fd3d6922eb9c9f16b60eb13) (thanks @extremeheat)
+* [Refactor API to split models by author, refactor handling of function calls (#54)](https://github.com/extremeheat/LXL/commit/96426e376d1707341a1ac72b853cad81f37695ae) (thanks @extremeheat)
+* [Add playground, support images in input (#43)](https://github.com/extremeheat/LXL/commit/3ccbd450764f84a0166f51acaae2cfdf85a6f12a) (thanks @extremeheat)
+* [Bump @google/generative-ai from 0.8.0 to 0.9.0 (#39)](https://github.com/extremeheat/LXL/commit/a041efd8a4ead9e7d6cdaee82beedc4c9d31f3f6) (thanks @dependabot[bot])
+* [Add a logging tool, caching fix (#40)](https://github.com/extremeheat/LXL/commit/0078901d4b25b3d425560defe9d32c5dbb4c5e2b) (thanks @extremeheat)
+
 ## 0.7.0
 ### Breaking
 * Remove old "guidance regions"
