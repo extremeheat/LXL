@@ -46,7 +46,7 @@
     "caller": "^1.1.0",
     "debug": "^4.3.4",
     "fast-xml-parser": "^4.3.6",
-    "gpt-tokenizer": "^2.1.2",
+    "gpt-tokenizer": "^3.2.0",
     "js-yaml": "^4.1.0",
     "openai": "^4.28.0",
     "ws": "^8.16.0"
